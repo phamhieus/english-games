@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BookOpen, Check, Keyboard, Languages, Lock, Play, Plus, RotateCcw, Shirt, Sparkles, Swords } from 'lucide-react';
+import { BookOpen, Check, Keyboard, Languages, Lock, Play, Plus, RotateCcw, Sparkles, Swords } from 'lucide-react';
 import type { Difficulty, GameMode, PracticeSize, SessionStyle } from '@/types';
 import { DIFFICULTIES } from '@/game/config/gameConfig';
 import { skinById } from '@/game/config/theme';
@@ -42,6 +42,10 @@ const SIZES: { value: string; label: string }[] = [
   { value: '30', label: '30 words' },
   { value: 'all', label: 'All' },
 ];
+
+/** Big chunky title-screen button (same look for PLAY and BOSS BATTLE). */
+const MENU_BTN =
+  'flex items-center justify-center gap-3 rounded-2xl border-[3px] border-line font-display font-bold tracking-wide shadow-[0_7px_0_var(--color-line)] transition hover:brightness-105 active:translate-y-1.5 active:shadow-[0_1px_0_var(--color-line)] disabled:cursor-not-allowed disabled:opacity-60';
 
 function Step({ n, title, tile, aside, children }: { n: number; title: string; tile: string; aside?: React.ReactNode; children: React.ReactNode }) {
   return (
@@ -167,11 +171,8 @@ export function HomeScreen() {
         <section className="card relative overflow-hidden rounded-3xl bg-candy-purple px-5 pt-6 pb-6 text-white lg:sticky lg:top-0 lg:self-start">
           <Sunburst />
           <div className="relative flex flex-col items-center text-center">
-            <span className="rounded-full border-2 border-line bg-candy-sun px-3 py-0.5 text-xs font-extrabold tracking-widest text-ink uppercase shadow-[0_2px_0_var(--color-line)]">
-              Vocabulary arcade
-            </span>
             {/* logo balloon + title, like the header logo */}
-            <div className="mt-4 flex items-center justify-center gap-2 sm:gap-4">
+            <div className="flex items-center justify-center gap-2 sm:gap-4">
               <FlatBalloon
                 color="#d6402e"
                 shade="#a52e20"
@@ -182,7 +183,6 @@ export function HomeScreen() {
                 <span className="block font-display text-6xl leading-[0.9] font-bold tracking-tight text-brand sm:text-8xl">Shooter</span>
               </h1>
             </div>
-            <p className="mt-4 max-w-xs font-semibold text-white/90">Type the word, pop the balloon, level up your English.</p>
 
             {/* mascot scene */}
             <div className="relative mt-2 h-60 w-full max-w-md sm:h-72" aria-hidden>
@@ -203,40 +203,26 @@ export function HomeScreen() {
               </div>
             </div>
 
-            <div ref={playRef} className="mt-4">
-              <span className={`inline-block ${canStart ? 'animate-[pulse-soft_1.8s_ease-in-out_infinite]' : ''}`}>
+            {/* game menu: two big buttons, nothing else */}
+            <div ref={playRef} className="mt-5 flex w-full max-w-xs flex-col gap-4">
+              <span className={`block ${canStart ? 'animate-[pulse-soft_1.8s_ease-in-out_infinite]' : ''}`}>
                 <button
                   type="button"
                   aria-label="Start game"
                   disabled={!canStart}
                   onClick={start}
-                  className="flex items-center gap-3 rounded-2xl border-[3px] border-line bg-candy-sun px-12 py-3.5 font-display text-4xl font-bold tracking-wide text-ink shadow-[0_7px_0_var(--color-line)] transition hover:brightness-105 active:translate-y-1.5 active:shadow-[0_1px_0_var(--color-line)] disabled:cursor-not-allowed disabled:opacity-60"
+                  className={`${MENU_BTN} w-full bg-candy-sun py-3.5 text-4xl text-ink`}
                 >
                   <Play size={32} fill="currentColor" strokeWidth={2.5} /> PLAY
                 </button>
               </span>
+              <button type="button" onClick={() => navigate('bosses')} className={`${MENU_BTN} w-full bg-candy-pink py-3 text-2xl text-white`} data-testid="open-bosses">
+                <Swords size={24} strokeWidth={2.5} /> BOSS BATTLE
+              </button>
             </div>
-            <p className="mt-4 text-sm font-bold text-white/90">{summary}</p>
             {notice && (
-              <p className="mt-2 rounded-xl border-2 border-line bg-surface px-3 py-1.5 text-sm font-semibold text-ink">{notice}</p>
+              <p className="mt-4 rounded-xl border-2 border-line bg-surface px-3 py-1.5 text-sm font-semibold text-ink">{notice}</p>
             )}
-
-            <button
-              type="button"
-              onClick={() => navigate('bosses')}
-              className="btn-candy mt-4 flex items-center gap-2 rounded-2xl bg-candy-pink px-6 py-2.5 font-display text-xl font-bold tracking-wide text-white"
-              data-testid="open-bosses"
-            >
-              <Swords size={22} strokeWidth={2.5} /> BOSS BATTLE
-            </button>
-            <div className="mt-5 flex flex-wrap justify-center gap-2">
-              <Button size="sm" variant="white" icon={<Shirt size={16} />} onClick={() => navigate('skins')}>
-                Skin: {skin.name}
-              </Button>
-              <Button size="sm" variant="white" icon={<Plus size={16} />} onClick={() => navigate('library')}>
-                Add words
-              </Button>
-            </div>
           </div>
         </section>
 

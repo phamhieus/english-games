@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { BarChart3, BookOpen, Gamepad2, Settings as SettingsIcon, Shirt, TriangleAlert } from 'lucide-react';
 import { isPersistent, openDatabase } from '@/services/database/db';
 import { markInterruptedSessions } from '@/services/database/repositories';
@@ -19,6 +19,17 @@ import { useAccountStore } from '@/stores/accountStore';
 import { Clouds } from '@/components/common/Clouds';
 import { FlatBalloon, Logo, Wordmark } from '@/components/common/Art';
 import { PlayerBadge } from '@/components/common/PlayerBadge';
+import { SignInMenu } from '@/components/account/SignInMenu';
+
+// "Play as guest" hides the sign-in menu until the browser tab is closed.
+const GUEST_KEY = 'ws.signin.guest';
+function guestChosen(): boolean {
+  try {
+    return sessionStorage.getItem(GUEST_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
 
 // Phaser is large; it's only downloaded when a game starts.
 const GameScreen = lazy(() => import('@/components/game/GameScreen'));
@@ -53,6 +64,15 @@ export function App() {
   const screen = useAppStore((s) => s.screen);
   const navigate = useAppStore((s) => s.navigate);
   const sessionKey = useAppStore((s) => s.sessionKey);
+  const [askSignIn, setAskSignIn] = useState(false);
+  const playAsGuest = useCallback(() => {
+    try {
+      sessionStorage.setItem(GUEST_KEY, '1');
+    } catch {
+      /* the menu just shows again next time */
+    }
+    setAskSignIn(false);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,7 +101,12 @@ export function App() {
       .getState()
       .init()
       .then(() => {
-        if (!returned) return;
+        if (!returned) {
+          // Nobody signed in: offer the sign-in menu (only when the server can sign people in).
+          const { status, providers } = useAccountStore.getState();
+          if (status === 'signed-out' && providers.length > 0 && !guestChosen()) setAskSignIn(true);
+          return;
+        }
         navigate('profile');
         const err = params.get('signInError');
         if (err) {
@@ -208,6 +233,7 @@ export function App() {
           {screen === 'bosses' && <BossSelectScreen />}
         </div>
       </main>
+      {askSignIn && <SignInMenu onGuest={playAsGuest} />}
     </div>
   );
 }
