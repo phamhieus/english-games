@@ -4,3 +4,8 @@ test-results
 playwright-report
 *.tsbuildinfo
 .vitest
+.wrangler
+.dev.vars
+.deploy.env
+
+.vercel

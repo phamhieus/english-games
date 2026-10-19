@@ -94,7 +94,7 @@ export function WordFormModal({
         <Field label="Tags (comma separated)" htmlFor="word-tags">
           <input id="word-tags" className={inputCls} value={tags} onChange={(e) => setTags(e.target.value)} />
         </Field>
-        {error && <p className="rounded-2xl bg-candy-red/15 px-3 py-2 text-sm font-semibold text-candy-pink-dark sm:col-span-2" role="alert">{error}</p>}
+        {error && <p className="rounded-xl bg-candy-red/15 px-3 py-2 text-sm font-semibold text-candy-pink-dark sm:col-span-2" role="alert">{error}</p>}
         <div className="flex flex-wrap justify-end gap-2 sm:col-span-2">
           <Button onClick={onClose}>Cancel</Button>
           {!word && (

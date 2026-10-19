@@ -1,0 +1,35 @@
+{
+  // Word Shooter: one Worker serves the built app (./dist) and the /api routes
+  // (Google/Facebook sign-in + account data sync, stored in D1).
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "word-shooter",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-19",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"],
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "word-shooter",
+      // Create it with `npx wrangler d1 create word-shooter` and paste the id here.
+      "database_id": "bdcecfa6-5e47-4184-abe6-409cea5b5c76",
+      "migrations_dir": "worker/migrations",
+    },
+  ],
+  "vars": {
+    // Graph API version used for Facebook Login.
+    "FACEBOOK_GRAPH_VERSION": "v23.0",
+    // Sites that proxy /api/* to this Worker (comma-separated): the Vercel deployment.
+    "PROXY_ORIGINS": "https://word-shooter-sage.vercel.app",
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+  },
+  // Secrets (set with `npx wrangler secret put <NAME>`, never commit them):
+  //   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, FACEBOOK_APP_ID, FACEBOOK_APP_SECRET
+}

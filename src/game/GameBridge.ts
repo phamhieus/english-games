@@ -1,4 +1,4 @@
-import type { AppSettings } from '@/types';
+import type { AppSettings, StageId } from '@/types';
 import type { GameSession, RunState } from '@/game/systems/SessionSystem';
 import { comboMultiplier } from '@/game/systems/ScoringSystem';
 
@@ -13,6 +13,15 @@ export interface HudState {
   missed: number;
   completion: { done: number; total: number } | null;
   multiplier: number;
+  /** Boss battles only. */
+  boss: BossHud | null;
+}
+
+export interface BossHud {
+  name: string;
+  hp: number;
+  maxHp: number;
+  enraged: boolean;
 }
 
 export type SubmitResult =
@@ -28,9 +37,11 @@ export interface FeedbackEvent {
 
 export interface SceneHandle {
   submit(text: string): SubmitResult;
+  submitIfComplete(text: string): SubmitResult;
   setTyped(text: string): void;
   setPaused(paused: boolean): void;
   applySettings(settings: AppSettings): void;
+  setStage(stage: StageId): void;
   quit(): void;
 }
 
@@ -53,6 +64,9 @@ export class GameBridge {
   private scene: SceneHandle | null = null;
   private listeners = new Map<keyof Events, Set<Listener<never>>>();
   private pendingPaused = false;
+  private stage: StageId | null = null;
+  /** Set by the boss scene; included in every HUD update. */
+  boss: BossHud | null = null;
 
   constructor(
     readonly session: GameSession,
@@ -64,6 +78,7 @@ export class GameBridge {
     if (scene) {
       scene.applySettings(this.settings);
       if (this.pendingPaused) scene.setPaused(true);
+      if (this.stage) scene.setStage(this.stage);
     }
   }
 
@@ -92,6 +107,11 @@ export class GameBridge {
     return this.scene?.submit(text) ?? { kind: 'ignored' };
   }
 
+  /** Auto-fire: submits only when `text` already completes a balloon unambiguously. */
+  submitIfComplete(text: string): SubmitResult {
+    return this.scene?.submitIfComplete(text) ?? { kind: 'ignored' };
+  }
+
   setTyped(text: string): void {
     this.scene?.setTyped(text);
   }
@@ -110,6 +130,12 @@ export class GameBridge {
     }
   }
 
+  /** Switches the backdrop-dependent bits of the scene (danger line colour). */
+  setStage(stage: StageId): void {
+    this.stage = stage;
+    this.scene?.setStage(stage);
+  }
+
   updateSettings(settings: AppSettings): void {
     this.settings = settings;
     this.scene?.applySettings(settings);
@@ -122,6 +148,7 @@ export class GameBridge {
       accuracy: this.session.scoring.accuracy,
       completion: this.session.completion,
       multiplier: comboMultiplier(s.combo),
+      boss: this.boss,
     };
   }
 }

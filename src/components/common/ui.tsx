@@ -8,8 +8,8 @@ const VARIANTS: Record<Variant, { cls: string; shadow: string }> = {
   purple: { cls: 'bg-candy-purple text-white', shadow: 'var(--color-candy-purple-dark)' },
   mint: { cls: 'bg-candy-mint text-ink', shadow: 'var(--color-candy-mint-dark)' },
   sun: { cls: 'bg-candy-sun text-ink', shadow: 'var(--color-candy-sun-dark)' },
-  white: { cls: 'bg-white text-ink', shadow: 'rgba(93,80,160,.25)' },
-  ghost: { cls: 'bg-transparent text-ink-soft hover:bg-white/60 !shadow-none', shadow: 'transparent' },
+  white: { cls: 'bg-surface text-ink', shadow: 'rgba(93,80,160,.25)' },
+  ghost: { cls: 'bg-transparent text-ink-soft hover:bg-surface !border-transparent !shadow-none', shadow: 'transparent' },
   danger: { cls: 'bg-candy-red text-white', shadow: '#d9526d' },
 };
 
@@ -21,7 +21,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 export function Button({ variant = 'white', size = 'md', icon, className = '', children, style, ...rest }: ButtonProps) {
   const v = VARIANTS[variant];
-  const sizes = { sm: 'px-3 py-1.5 text-sm rounded-xl', md: 'px-4 py-2 rounded-2xl', lg: 'px-6 py-3 text-lg rounded-2xl' };
+  const sizes = { sm: 'px-3 py-1.5 text-sm rounded-xl', md: 'px-4 py-2 rounded-xl', lg: 'px-6 py-3 text-lg rounded-xl' };
   return (
     <button
       type="button"
@@ -36,7 +36,7 @@ export function Button({ variant = 'white', size = 'md', icon, className = '', c
 }
 
 export function Card({ className = '', children }: { className?: string; children: ReactNode }) {
-  return <div className={`card rounded-3xl ${className}`}>{children}</div>;
+  return <div className={`card rounded-2xl ${className}`}>{children}</div>;
 }
 
 export function Segmented<T extends string | number>({
@@ -62,8 +62,8 @@ export function Segmented<T extends string | number>({
             aria-checked={active}
             title={o.hint}
             onClick={() => onChange(o.value)}
-            className={`btn-candy rounded-2xl px-4 py-2 font-semibold ${
-              active ? 'bg-candy-purple text-white' : 'bg-white text-ink-soft'
+            className={`btn-candy rounded-xl px-4 py-2 font-semibold ${
+              active ? 'bg-candy-purple text-white' : 'bg-surface text-ink-soft'
             }`}
             style={{ ['--shadow' as string]: active ? 'var(--color-candy-purple-dark)' : 'rgba(93,80,160,.2)' }}
           >
@@ -94,8 +94,8 @@ export function Toggle({
       </span>
       <span className="relative mt-1 inline-flex shrink-0">
         <input type="checkbox" className="peer sr-only" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-        <span className="h-7 w-12 rounded-full bg-ink/15 transition peer-checked:bg-candy-mint peer-focus-visible:outline-3 peer-focus-visible:outline-candy-purple" />
-        <span className="absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5" />
+        <span className="h-7 w-12 rounded-full border-2 border-line bg-surface transition peer-checked:bg-candy-mint peer-focus-visible:outline-3 peer-focus-visible:outline-candy-purple" />
+        <span className="absolute left-0.5 top-0.5 h-6 w-6 rounded-full border-2 border-line bg-surface transition peer-checked:translate-x-5" />
       </span>
     </label>
   );
@@ -120,18 +120,18 @@ export function Modal({
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/30 p-2 sm:items-center sm:p-4" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-line/40 p-2 sm:items-center sm:p-4" onMouseDown={onClose}>
       <div
         ref={ref}
         role="dialog"
         aria-modal="true"
         aria-label={title}
         onMouseDown={(e) => e.stopPropagation()}
-        className={`card animate-pop-in flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-3xl bg-cream ${wide ? 'max-w-4xl' : 'max-w-lg'}`}
+        className={`card animate-pop-in flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-2xl bg-cream ${wide ? 'max-w-4xl' : 'max-w-lg'}`}
       >
-        <div className="flex items-center justify-between border-b-2 border-white px-5 py-3">
+        <div className="flex items-center justify-between border-b-2 border-line px-5 py-3">
           <h2 className="text-xl font-bold">{title}</h2>
-          <button type="button" aria-label="Close" onClick={onClose} className="rounded-full p-1.5 text-ink-soft hover:bg-white">
+          <button type="button" aria-label="Close" onClick={onClose} className="rounded-full p-1.5 text-ink-soft hover:bg-surface">
             <X size={20} />
           </button>
         </div>
@@ -178,4 +178,4 @@ export function EmptyState({ icon, title, children }: { icon: ReactNode; title: 
 }
 
 export const inputCls =
-  'w-full rounded-2xl border-2 border-white bg-white/90 px-3 py-2 text-ink placeholder:text-ink-soft/60 focus:border-candy-purple focus:outline-none';
+  'w-full rounded-xl border-2 border-line bg-surface px-3 py-2 text-ink placeholder:text-ink-soft/60 focus:border-candy-purple focus:outline-none';
