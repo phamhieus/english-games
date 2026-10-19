@@ -7,6 +7,7 @@ import { useSettingsStore } from '@/stores/settingsStore';
 import { useAppStore, type Screen } from '@/stores/appStore';
 import { useViewportHeight } from '@/hooks/useViewportHeight';
 import { music } from '@/services/audio/music';
+import { speech } from '@/services/speech/speech';
 import { HomeScreen } from '@/components/game/HomeScreen';
 import { ResultsScreen } from '@/components/game/ResultsScreen';
 import { LibraryScreen } from '@/components/vocabulary/LibraryScreen';
@@ -146,14 +147,17 @@ export function App() {
     if (ready && screen !== 'game') music.play('menu');
   }, [ready, screen]);
 
-  // Browsers only start audio after a user gesture.
+  // Browsers only start audio/speech after a user gesture. On touch screens a
+  // pointerdown doesn't count as one — only the release (pointerup/touchend) does.
   useEffect(() => {
-    const unlock = () => music.unlock();
-    window.addEventListener('pointerdown', unlock);
-    window.addEventListener('keydown', unlock);
+    const unlock = () => {
+      music.unlock();
+      speech.unlock();
+    };
+    const events = ['pointerdown', 'pointerup', 'touchend', 'keydown'] as const;
+    for (const e of events) window.addEventListener(e, unlock);
     return () => {
-      window.removeEventListener('pointerdown', unlock);
-      window.removeEventListener('keydown', unlock);
+      for (const e of events) window.removeEventListener(e, unlock);
     };
   }, []);
 

@@ -6,12 +6,36 @@ export type SpeechLang = 'en' | 'vi';
  */
 class SpeechService {
   private voices: SpeechSynthesisVoice[] = [];
+  private unlocked = false;
+  /** Held so mobile browsers don't garbage-collect the utterance mid-sentence. */
+  private current: SpeechSynthesisUtterance | null = null;
 
   constructor() {
     if (!this.available) return;
     try {
       this.loadVoices();
-      window.speechSynthesis.addEventListener?.('voiceschanged', () => this.loadVoices());
+      const synth = window.speechSynthesis;
+      if (synth.addEventListener) synth.addEventListener('voiceschanged', () => this.loadVoices());
+      else synth.onvoiceschanged = () => this.loadVoices();
+    } catch {
+      /* ignore */
+    }
+  }
+
+  /**
+   * iOS Safari only lets speechSynthesis talk once speak() has run inside a user gesture;
+   * until then, speech triggered from timers (the game loop) is silently dropped.
+   * Call from a tap/key handler — speaks a silent utterance once to unlock it.
+   */
+  unlock(): void {
+    if (this.unlocked || !this.available) return;
+    try {
+      const synth = window.speechSynthesis;
+      synth.resume();
+      const u = new SpeechSynthesisUtterance(' ');
+      u.volume = 0;
+      synth.speak(u);
+      this.unlocked = true;
     } catch {
       /* ignore */
     }
@@ -59,13 +83,27 @@ class SpeechService {
       // Without a Vietnamese voice the browser would read Vietnamese with an English voice — skip instead.
       if (!voice && lang === 'vi') return false;
       const synth = window.speechSynthesis;
-      if (opts.interrupt && (synth.speaking || synth.pending)) synth.cancel();
       const u = new SpeechSynthesisUtterance(text);
       if (voice) u.voice = voice;
       u.lang = voice?.lang ?? (lang === 'en' ? 'en-US' : 'vi-VN');
       u.rate = Math.max(0.5, Math.min(1.5, opts.rate ?? 0.9));
       u.onerror = () => undefined;
-      synth.speak(u);
+      u.onend = () => {
+        if (this.current === u) this.current = null;
+      };
+      this.current = u;
+      const start = () => {
+        // iOS leaves the engine paused after backgrounding/interruptions.
+        if (synth.paused) synth.resume();
+        synth.speak(u);
+      };
+      if (opts.interrupt && (synth.speaking || synth.pending)) {
+        synth.cancel();
+        // Chrome (esp. Android) drops an utterance queued in the same tick as cancel().
+        setTimeout(start, 60);
+      } else {
+        start();
+      }
       return true;
     } catch {
       return false;
