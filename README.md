@@ -1,6 +1,6 @@
 # 🎈 Word Shooter
 
-A cute, soft bubble-shooter style game for memorising English vocabulary. Balloons with words float down. Type the English word and press **Enter**, and the little cannon pops the balloon. It runs entirely in the browser with no account or backend, and all data is stored in IndexedDB.
+A cute, soft bubble-shooter style game for memorising English vocabulary. Balloons with words float down. Type the English word and press **Enter**, and the little cannon pops the balloon. It runs entirely in the browser (data in IndexedDB); optionally players can sign in with Google or Facebook to save their progress online and play on any device. See [docs/ACCOUNTS.md](docs/ACCOUNTS.md).
 
 ## Quick start
 
@@ -10,6 +10,8 @@ npm run dev          # http://localhost:5173
 npm test             # unit tests (Vitest)
 npm run test:e2e     # Playwright smoke test (builds + previews the app)
 npm run build        # type-check + production build into dist/
+npm run dev:api      # (optional) account API on :8787 — see docs/ACCOUNTS.md
+npm run deploy       # build + deploy app and API to Cloudflare Workers
 ```
 
 On first launch a demo collection (“Starter Pack”, 30 words) is added once. You can delete it and import your own words.

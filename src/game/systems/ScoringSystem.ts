@@ -91,6 +91,11 @@ export class ScoringSystem {
     return { points: s.score - before, penalised: true };
   }
 
+  /** Extra points (e.g. for beating a boss or a "double" hit). */
+  bonus(points: number): void {
+    this.state.score += Math.max(0, Math.round(points));
+  }
+
   missed(): { points: number; livesLeft: number } {
     const s = this.state;
     s.missed += 1;

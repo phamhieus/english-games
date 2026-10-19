@@ -1,12 +1,14 @@
 import Phaser from 'phaser';
-import type { AppSettings, VocabularyItem } from '@/types';
+import type { AppSettings, StageId, VocabularyItem } from '@/types';
 import type { GameBridge, SceneHandle, SubmitResult } from '@/game/GameBridge';
 import type { GameSession } from '@/game/systems/SessionSystem';
 import { GAMEPLAY } from '@/game/config/gameConfig';
-import { BALLOON_COLORS, THEME } from '@/game/config/theme';
+import { BALLOON_COLORS } from '@/game/config/theme';
+import { stageById } from '@/game/config/stages';
 import { Balloon } from '@/game/entities/Balloon';
 import { Cannon } from '@/game/entities/Cannon';
 import { Projectile } from '@/game/entities/Projectile';
+import { fireworks, floatText, muzzleBurst } from './effects';
 import {
   attributeWrongAnswer,
   findExactTarget,
@@ -34,6 +36,7 @@ export class GameScene extends Phaser.Scene implements SceneHandle {
   private bridge!: GameBridge;
   private session!: GameSession;
   private settings!: AppSettings;
+  private stageId: StageId | undefined;
   private balloons: Balloon[] = [];
   private cannon!: Cannon;
   private danger!: Phaser.GameObjects.Graphics;
@@ -67,10 +70,25 @@ export class GameScene extends Phaser.Scene implements SceneHandle {
     this.sinceSpawn = params.spawnIntervalMs - GAMEPLAY.firstSpawnDelayMs;
   }
 
+  /** Render scale (device pixels per CSS pixel); the camera zooms by it so the scene works in CSS pixels. */
+  private get dpr(): number {
+    return (this.registry.get('dpr') as number | undefined) ?? 1;
+  }
+
+  /** Play-field size in CSS pixels. */
+  private get viewW(): number {
+    return this.scale.width / this.dpr;
+  }
+
+  private get viewH(): number {
+    return this.scale.height / this.dpr;
+  }
+
   create(): void {
+    this.cameras.main.setOrigin(0, 0).setZoom(this.dpr);
     this.danger = this.add.graphics().setDepth(1);
     this.dangerFlash = this.add.graphics().setDepth(1).setAlpha(0);
-    this.cannon = new Cannon(this).setDepth(5);
+    this.cannon = new Cannon(this, this.settings.cannonSkin).setDepth(5);
     this.layout();
     this.scale.on(Phaser.Scale.Events.RESIZE, this.layout, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -85,9 +103,16 @@ export class GameScene extends Phaser.Scene implements SceneHandle {
 
   // ── Layout ────────────────────────────────────────────────────────────────
 
+  /** Size tier of the play field; a phone with the keyboard open leaves very little height. */
+  private get tier(): { cannon: number; cannonY: number; danger: number; balloon: number } {
+    const h = this.viewH;
+    if (h < 300) return { cannon: 0.55, cannonY: 27, danger: 66, balloon: 0.74 };
+    if (h < 420) return { cannon: 0.75, cannonY: 38, danger: 92, balloon: 0.88 };
+    return { cannon: 0.88, cannonY: 50, danger: 112, balloon: 1 };
+  }
+
   private get dangerY(): number {
-    const h = this.scale.height;
-    return h - (h < 420 ? 92 : 112);
+    return this.viewH - this.tier.danger;
   }
 
   private get animate(): boolean {
@@ -95,17 +120,21 @@ export class GameScene extends Phaser.Scene implements SceneHandle {
   }
 
   private layout(): void {
-    const { width, height } = this.scale;
-    this.cannon.setPosition(width / 2, height - (height < 420 ? 34 : 44));
+    const width = this.viewW;
+    const height = this.viewH;
+    const tier = this.tier;
+    this.cannon.setScale(tier.cannon).setPosition(width / 2, height - tier.cannonY);
+    for (const b of this.balloons) b.setScale(tier.balloon);
     const y = this.dangerY;
     const g = this.danger;
     g.clear();
-    g.fillStyle(THEME.danger, 0.08);
+    const danger = stageById(this.stageId ?? this.session.config.stage).danger;
+    g.fillStyle(danger, 0.1);
     g.fillRect(0, y, width, height - y);
-    g.fillStyle(THEME.danger, 0.65);
+    g.fillStyle(danger, 0.85);
     for (let x = 8; x < width; x += 22) g.fillRoundedRect(x, y - 2, 12, 4, 2);
     this.dangerFlash.clear();
-    this.dangerFlash.fillStyle(THEME.danger, 0.35);
+    this.dangerFlash.fillStyle(danger, 0.35);
     this.dangerFlash.fillRect(0, y - 6, width, height - y + 6);
   }
 
@@ -125,7 +154,7 @@ export class GameScene extends Phaser.Scene implements SceneHandle {
       }
     }
     this.updateSpawning(dt);
-    const w = this.scale.width;
+    const w = this.viewW;
     const dy = this.dangerY;
     for (const b of this.balloons) if (!b.claimed) b.place(w, dy, this.clock, this.animate);
   }
@@ -187,13 +216,14 @@ export class GameScene extends Phaser.Scene implements SceneHandle {
       color,
       spawnClock: this.clock,
       inlineHighlight: prompt === word.english,
+      masked: this.session.config.mode === 'copy',
     });
-    b.setDepth(3).setVisible(false);
+    b.setDepth(3).setVisible(false).setScale(this.tier.balloon);
     return b;
   }
 
   private tryPlace(b: Balloon): boolean {
-    const w = this.scale.width;
+    const w = this.viewW;
     const occupied = this.balloons
       .filter((o) => !o.claimed && o.y < b.bodyHeight * 2.2 + 20)
       .map((o) => ({ x: o.x, y: o.y, width: o.bodyWidth, height: o.bodyHeight }));
@@ -248,6 +278,21 @@ export class GameScene extends Phaser.Scene implements SceneHandle {
     return { kind: 'incorrect', penalised: res.penalised };
   }
 
+  /**
+   * Fires without Enter once the text exactly matches a balloon. Held back while a
+   * longer balloon answer still starts with it (e.g. "take" vs "take into account"),
+   * so the player can keep typing; Enter still submits in that case.
+   */
+  submitIfComplete(text: string): SubmitResult {
+    const typed = normalizeAnswer(text);
+    if (!typed || !findExactTarget(text, this.balloons)) return { kind: 'ignored' };
+    const longer = this.balloons.some((b) => {
+      const a = normalizeAnswer(b.answer);
+      return !b.claimed && a.length > typed.length && a.startsWith(typed);
+    });
+    return longer ? { kind: 'ignored' } : this.submit(text);
+  }
+
   setTyped(text: string): void {
     this.typed = text;
     this.refreshTyping();
@@ -258,13 +303,18 @@ export class GameScene extends Phaser.Scene implements SceneHandle {
   }
 
   private refreshTyping(): void {
-    const enabled = this.highlightEnabled();
+    // Copy Typing hides words behind "_", so reveal/targeting always run there.
+    const masked = this.session.config.mode === 'copy';
+    const enabled = masked || this.highlightEnabled();
     const target = enabled ? findPrefixTarget(this.typed, this.balloons) : null;
     for (const b of this.balloons) {
       if (b.claimed) continue;
-      b.setTyping(enabled ? matchedPrefixLength(this.typed, b.answer) : 0, b === target);
+      // Masked words only reveal letters on the targeted balloon, so other balloons stay hidden.
+      const matched = !enabled || (masked && b !== target) ? 0 : matchedPrefixLength(this.typed, b.answer);
+      b.setTyping(matched, b === target);
     }
     if (target) this.cannon.aimAt(target.x, target.y, this.animate);
+    else this.cannon.relax(this.animate);
   }
 
   setPaused(paused: boolean): void {
@@ -278,9 +328,18 @@ export class GameScene extends Phaser.Scene implements SceneHandle {
     }
   }
 
+  setStage(stage: StageId): void {
+    this.stageId = stage;
+    if (this.cannon) this.layout();
+  }
+
   applySettings(settings: AppSettings): void {
     this.settings = settings;
-    if (this.cannon) this.refreshTyping();
+    if (this.cannon) {
+      this.cannon.setSkin(settings.cannonSkin);
+      this.cannon.setAnimate(this.animate);
+      this.refreshTyping();
+    }
   }
 
   // ── Effects ─────────────────────────────────────────────────────────────────
@@ -292,7 +351,8 @@ export class GameScene extends Phaser.Scene implements SceneHandle {
     this.cannon.recoil(this.animate);
     sfx.play('shoot');
     const from = this.cannon.muzzle();
-    const p = new Projectile(this, from.x, from.y, target.color.shade).setDepth(4);
+    muzzleBurst(this, this.cannon.currentSkin, from.x, from.y, this.cannon.barrelRotation, this.animate);
+    const p = new Projectile(this, from.x, from.y, this.cannon.currentSkin).setDepth(4);
     const duration = this.animate ? GAMEPLAY.projectileMs : 0;
     p.fire(target.x, target.y, duration, () => this.explode(target, points, comboBonus));
   }
@@ -301,11 +361,11 @@ export class GameScene extends Phaser.Scene implements SceneHandle {
     this.removeBalloon(b);
     sfx.play('pop');
     const { x, y } = b;
-    this.floatText(x, y - 10, `+${points}`, '#7a4fd6');
+    floatText(this, x, y - 10, `+${points}`, '#7a4fd6', this.animate);
     if (comboBonus) {
       sfx.play('combo');
       const combo = this.session.scoring.snapshot.combo;
-      this.floatText(x, y - 42, `Combo ×${combo}!`, '#e2457a', 26);
+      floatText(this, x, y - 42, `Combo ×${combo}!`, '#e2457a', this.animate, 26);
       this.bridge.emit('feedback', { kind: 'combo', text: `Combo ×${combo}!` });
     }
     if (!this.animate) {
@@ -334,6 +394,7 @@ export class GameScene extends Phaser.Scene implements SceneHandle {
     });
     stars.setDepth(6);
     stars.explode(6);
+    fireworks(this, this.cannon.currentSkin, x, y, this.animate);
     const ring = this.add.graphics({ x, y }).setDepth(5);
     ring.lineStyle(5, b.color.glow, 1);
     ring.strokeCircle(0, 0, 24);
@@ -351,25 +412,8 @@ export class GameScene extends Phaser.Scene implements SceneHandle {
     });
   }
 
-  private floatText(x: number, y: number, text: string, color: string, size = 22): void {
-    const t = this.add
-      .text(x, y, text, {
-        fontFamily: THEME.font,
-        fontSize: `${size}px`,
-        fontStyle: '700',
-        color,
-        stroke: '#ffffff',
-        strokeThickness: 5,
-        resolution: Math.min(3, window.devicePixelRatio || 1),
-      })
-      .setOrigin(0.5)
-      .setDepth(7);
-    if (!this.animate) {
-      this.time.delayedCall(600, () => t.destroy());
-      return;
-    }
-    this.tweens.add({ targets: t, y: y - 50, alpha: 0, duration: 900, ease: 'Quad.easeOut', onComplete: () => t.destroy() });
-  }
+
+
 
   private handleMiss(b: Balloon): void {
     b.claimed = true;
@@ -377,7 +421,7 @@ export class GameScene extends Phaser.Scene implements SceneHandle {
     const res = this.session.balloonMissed(b.wordId);
     sfx.play('miss');
     this.bridge.emit('feedback', { kind: 'missed', text: `Missed: ${b.answer}` });
-    this.floatText(b.x, this.dangerY - 30, res && res.points < 0 ? `${res.points}` : 'Missed', '#e2457a');
+    floatText(this, b.x, this.dangerY - 30, res && res.points < 0 ? `${res.points}` : 'Missed', '#e2457a', this.animate);
     this.tweens.add({ targets: this.dangerFlash, alpha: { from: 1, to: 0 }, duration: 500 });
     if (this.animate) {
       this.tweens.add({ targets: b, scaleX: 1.3, scaleY: 0.4, alpha: 0, duration: 220, onComplete: () => b.destroy() });

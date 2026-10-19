@@ -1,25 +1,32 @@
 import { create } from 'zustand';
-import type { Difficulty, GameMode, PracticeSize, SessionConfig, SessionRecord, SessionStyle } from '@/types';
+import type { Difficulty, GameMode, PracticeSize, SessionConfig, SessionRecord, SessionStyle, StageMode } from '@/types';
 import { getDb } from '@/services/database/db';
 
-export type Screen = 'home' | 'game' | 'results' | 'library' | 'stats' | 'settings';
+export type Screen = 'home' | 'game' | 'results' | 'library' | 'skins' | 'stats' | 'settings' | 'profile' | 'bosses';
 
 export interface GameSetup {
-  collectionId: string | null;
+  /** Word sets practised together. */
+  collectionIds: string[];
   mode: GameMode;
   difficulty: Difficulty;
   style: SessionStyle;
   practiceSize: PracticeSize;
+  /** A random backdrop each game, or a level journey through all of them. */
+  stageMode: StageMode;
+  /** Words shown in boss battles: English (copy) or the Vietnamese meaning (recall). */
+  bossMode: 'copy' | 'recall';
 }
 
 const SETUP_KEY = 'last-setup';
 
-const DEFAULT_SETUP: GameSetup = {
-  collectionId: null,
+export const DEFAULT_SETUP: GameSetup = {
+  collectionIds: [],
   mode: 'recall',
   difficulty: 'easy',
   style: 'practice',
   practiceSize: 10,
+  stageMode: 'levels',
+  bossMode: 'recall',
 };
 
 interface AppStore {
@@ -50,7 +57,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
   async loadSetup() {
     try {
       const row = await getDb().settings.get(SETUP_KEY);
-      if (row?.value) set({ setup: { ...DEFAULT_SETUP, ...(row.value as unknown as Partial<GameSetup>) } });
+      if (row?.value) {
+        const stored = row.value as unknown as Partial<GameSetup> & { collectionId?: string | null };
+        // Older saves remembered a single set.
+        const collectionIds = stored.collectionIds ?? (stored.collectionId ? [stored.collectionId] : []);
+        set({ setup: { ...DEFAULT_SETUP, ...stored, collectionIds } });
+      }
     } catch {
       /* defaults */
     }

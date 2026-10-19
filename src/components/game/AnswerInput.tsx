@@ -10,10 +10,12 @@ interface Props {
   bridge: GameBridge;
   disabled: boolean;
   placeholder: string;
+  /** Shorter box when the keyboard leaves little room. */
+  compact?: boolean;
 }
 
-/** The answer field. Enter submits; correct answers clear it, wrong ones shake and select it. */
-export const AnswerInput = forwardRef<AnswerInputHandle, Props>(function AnswerInput({ bridge, disabled, placeholder }, ref) {
+/** The answer field. Completing a word fires automatically (Enter also submits); correct answers clear it, wrong ones shake and select it. */
+export const AnswerInput = forwardRef<AnswerInputHandle, Props>(function AnswerInput({ bridge, disabled, placeholder, compact = false }, ref) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState('');
   const [state, setState] = useState<'idle' | 'wrong' | 'right'>('idle');
@@ -22,14 +24,14 @@ export const AnswerInput = forwardRef<AnswerInputHandle, Props>(function AnswerI
 
   useImperativeHandle(ref, () => ({ focus: () => inputRef.current?.focus({ preventScroll: true }) }), []);
 
-  const submit = () => {
-    const res = bridge.submit(value);
+  const submit = (text = value, auto = false) => {
+    const res = auto ? bridge.submitIfComplete(text) : bridge.submit(text);
     if (res.kind === 'correct') {
       setValue('');
       bridge.setTyped('');
       setState('right');
       window.setTimeout(() => setState('idle'), 250);
-    } else if (res.kind === 'incorrect' || res.kind === 'empty') {
+    } else if (res.kind === 'incorrect') {
       setState('wrong');
       setShakeKey((k) => k + 1);
       inputRef.current?.select();
@@ -38,7 +40,7 @@ export const AnswerInput = forwardRef<AnswerInputHandle, Props>(function AnswerI
   };
 
   const border =
-    state === 'wrong' ? 'border-candy-red bg-[#fff0f3]' : state === 'right' ? 'border-candy-mint bg-[#effcf9]' : 'border-white bg-white';
+    state === 'wrong' ? 'border-candy-red bg-[#fff0f3]' : state === 'right' ? 'border-candy-mint bg-[#effcf9]' : 'border-line bg-surface';
 
   return (
     <form
@@ -56,6 +58,7 @@ export const AnswerInput = forwardRef<AnswerInputHandle, Props>(function AnswerI
           onChange={(e) => {
             setValue(e.target.value);
             bridge.setTyped(e.target.value);
+            submit(e.target.value, true);
           }}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
@@ -69,15 +72,15 @@ export const AnswerInput = forwardRef<AnswerInputHandle, Props>(function AnswerI
           enterKeyHint="go"
           inputMode="text"
           maxLength={80}
-          className={`w-full rounded-2xl border-[3px] px-4 py-3 text-center text-xl font-semibold tracking-wide shadow-md outline-none transition-colors placeholder:text-base placeholder:font-medium placeholder:text-ink-soft/50 focus:border-candy-purple ${border}`}
+          className={`w-full rounded-xl border-[3px] px-4 text-center font-semibold ${compact ? 'py-1.5 text-lg' : 'py-3 text-xl'} tracking-wide shadow-[0_3px_0_var(--color-line)] outline-none transition-colors placeholder:text-base placeholder:font-medium placeholder:text-ink-soft/50 focus:border-candy-purple ${border}`}
         />
         {!focused && !disabled && (
           <button
             type="button"
             onClick={() => inputRef.current?.focus()}
-            className="absolute inset-0 flex items-center justify-center rounded-2xl bg-white/70 text-sm font-bold text-candy-purple-dark"
+            className="absolute inset-0 flex items-center justify-center rounded-xl bg-surface text-sm font-bold text-candy-purple-dark"
           >
-            Tap here (or just start typing) to aim ✨
+            {compact ? 'Tap to type' : 'Tap here (or just start typing) to aim ✨'}
           </button>
         )}
       </div>
@@ -85,7 +88,7 @@ export const AnswerInput = forwardRef<AnswerInputHandle, Props>(function AnswerI
         type="submit"
         disabled={disabled}
         aria-label="Fire"
-        className="btn-candy flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-2xl bg-candy-pink text-white disabled:opacity-50"
+        className={`btn-candy flex shrink-0 items-center justify-center rounded-xl bg-candy-pink text-white disabled:opacity-50 ${compact ? 'h-[44px] w-[44px]' : 'h-[54px] w-[54px]'}`}
         style={{ ['--shadow' as string]: 'var(--color-candy-pink-dark)' }}
       >
         <CornerDownLeft size={24} />

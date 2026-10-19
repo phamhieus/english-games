@@ -5,7 +5,10 @@ export function prefersReducedMotion(): boolean {
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
+  theme: 'dark',
   soundEnabled: true,
+  musicEnabled: true,
+  musicVolume: 0.5,
   sfxVolume: 0.6,
   speechEnabled: true,
   speechRate: 0.9,
@@ -16,8 +19,17 @@ export const DEFAULT_SETTINGS: AppSettings = {
   reducedMotion: false,
   copyModeHighlight: true,
   recallModeHighlight: false,
+  deepseekApiKey: '',
+  cannonSkin: 'classic',
+  ownedSkins: [],
+  coinsSpent: 0,
+  achievementsSeen: [],
+  bossesDefeated: [],
 };
 
 export function mergeSettings(stored: Partial<AppSettings> | undefined): AppSettings {
-  return { ...DEFAULT_SETTINGS, reducedMotion: prefersReducedMotion(), ...(stored ?? {}) };
+  const merged = { ...DEFAULT_SETTINGS, reducedMotion: prefersReducedMotion(), ...(stored ?? {}) };
+  // Saves from before the skin shop: keep the skin the player already had equipped.
+  if (!stored?.ownedSkins) merged.ownedSkins = stored?.cannonSkin ? [stored.cannonSkin] : [];
+  return merged;
 }

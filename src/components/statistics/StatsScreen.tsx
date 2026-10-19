@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { BarChart3 } from 'lucide-react';
+import { BarChart3, BookCheck, CalendarClock, Crown, Flame, Gamepad2, Gauge, Sparkles, Star, Target } from 'lucide-react';
 import { getDb } from '@/services/database/db';
 import { accuracySeries, computeOverview, dailyActivity, masteryDistribution } from '@/features/statistics/stats';
 import { Card, EmptyState } from '@/components/common/ui';
+import { BrandTitle, Sunburst } from '@/components/common/Art';
 import { BarChart, LineChart } from './Charts';
 
 const MODE = { copy: 'Copy', recall: 'Vi → En', mistakes: 'Review' } as const;
@@ -30,29 +31,50 @@ export function StatsScreen() {
 
   if (!view) return null;
   const o = view.overview;
-  const tiles: [string, string | number][] = [
-    ['Words learned', o.learned],
-    ['Not practiced yet', o.notPracticed],
-    ['Due for review', o.due],
-    ['Mastered', o.mastered],
-    ['Average accuracy', o.averageAccuracy === null ? '—' : `${Math.round(o.averageAccuracy * 100)}%`],
-    ['Typing speed', o.wordsPerMinute === null ? '—' : `${Math.round(o.wordsPerMinute)} WPM`],
-    ['Game sessions', o.totalSessions],
-    ['Best score', o.bestScore],
-    ['Learning streak', `${o.streak} day${o.streak === 1 ? '' : 's'}`],
+  const tiles: [string, string | number, typeof Star, string][] = [
+    ['Words learned', o.learned, BookCheck, 'bg-candy-blue'],
+    ['Not practiced yet', o.notPracticed, Sparkles, 'bg-[#b7a4f7]'],
+    ['Due for review', o.due, CalendarClock, 'bg-[#ff9fb8]'],
+    ['Mastered', o.mastered, Star, 'bg-candy-mint'],
+    ['Average accuracy', o.averageAccuracy === null ? '—' : `${Math.round(o.averageAccuracy * 100)}%`, Target, 'bg-candy-sun'],
+    ['Typing speed', o.wordsPerMinute === null ? '—' : `${Math.round(o.wordsPerMinute)} WPM`, Gauge, 'bg-candy-blue'],
+    ['Game sessions', o.totalSessions, Gamepad2, 'bg-[#ff9fb8]'],
+    ['Best score', o.bestScore, Crown, 'bg-candy-sun'],
   ];
   const fmtDate = (ts: number) => new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-3xl font-bold text-candy-purple-dark">Your progress</h1>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5" data-testid="stat-tiles">
-        {tiles.map(([label, value]) => (
-          <Card key={label} className="p-4">
-            <div className="text-2xl font-bold tabular-nums" data-testid={`stat-${label.toLowerCase().replace(/[^a-z]+/g, '-')}`}>
-              {value}
+      <section className="card relative flex flex-wrap items-center gap-4 overflow-hidden rounded-3xl bg-candy-purple px-6 py-5 text-white">
+        <Sunburst />
+        <div className="relative mr-auto">
+          <h1 className="text-4xl sm:text-5xl">
+            <BrandTitle onColor>Your progress</BrandTitle>
+          </h1>
+          <p className="mt-2 font-semibold text-white/85">Every balloon you pop makes a word stick.</p>
+        </div>
+        <div className="relative flex items-center gap-3 rounded-2xl border-2 border-line bg-candy-sun px-4 py-2 text-ink shadow-[0_4px_0_var(--color-line)]">
+          <Flame size={34} className="text-candy-pink" fill="currentColor" />
+          <div>
+            <div className="font-display text-3xl leading-none font-bold tabular-nums" data-testid="stat-learning-streak">
+              {`${o.streak} day${o.streak === 1 ? '' : 's'}`}
             </div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-ink-soft">{label}</div>
+            <div className="text-xs font-extrabold tracking-wide uppercase">Learning streak</div>
+          </div>
+        </div>
+      </section>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4" data-testid="stat-tiles">
+        {tiles.map(([label, value, Icon, tile]) => (
+          <Card key={label} className="flex items-center gap-3 p-3.5">
+            <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-line ${tile}`}>
+              <Icon size={22} strokeWidth={2.5} />
+            </span>
+            <div className="min-w-0">
+              <div className="font-display text-2xl leading-tight font-bold tabular-nums" data-testid={`stat-${label.toLowerCase().replace(/[^a-z]+/g, '-')}`}>
+                {value}
+              </div>
+              <div className="truncate text-xs font-bold tracking-wide text-ink-soft uppercase">{label}</div>
+            </div>
           </Card>
         ))}
       </div>
@@ -60,11 +82,11 @@ export function StatsScreen() {
       {o.totalSessions === 0 ? (
         <Card className="p-6">
           <EmptyState icon={<BarChart3 size={48} />} title="No games played yet">
-            Charts appear after your first session. Go pop some balloons! 🎈
+            Charts appear after your first session. Go pop some balloons!
           </EmptyState>
         </Card>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-3">
           <Card className="p-5">
             <h2 className="font-bold">Accuracy per session</h2>
             <p className="mb-2 text-sm text-ink-soft">Last {view.accuracy.length} sessions</p>
@@ -112,10 +134,10 @@ export function StatsScreen() {
             </thead>
             <tbody>
               {view.recent.map((s) => (
-                <tr key={s.id} className="border-t border-white">
+                <tr key={s.id} className="border-t-2 border-line/10">
                   <td className="py-1.5">{new Date(s.startedAt).toLocaleString()}</td>
                   <td className="max-w-[160px] truncate">{s.collectionName}</td>
-                  <td>{MODE[s.mode]}</td>
+                  <td>{s.boss ? 'Boss' : MODE[s.mode]}</td>
                   <td className="text-right font-semibold tabular-nums">{s.score}</td>
                   <td className="text-right tabular-nums">{Math.round(s.accuracy * 100)}%</td>
                   <td className="text-right">{STATUS[s.status]}</td>

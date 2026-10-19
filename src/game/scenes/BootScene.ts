@@ -24,6 +24,12 @@ export class BootScene extends Phaser.Scene {
       true,
     );
     g.generateTexture('star', 20, 20);
+    g.clear();
+    // petal (white so it can be tinted)
+    g.fillStyle(0xffffff, 1);
+    g.fillEllipse(8, 11, 12, 18);
+    g.fillTriangle(5, 2, 11, 2, 8, 7);
+    g.generateTexture('petal', 16, 22);
     g.destroy();
 
     const bridge = this.registry.get('bridge') as unknown;
@@ -37,7 +43,9 @@ export class BootScene extends Phaser.Scene {
     void fontReady
       .catch(() => undefined)
       .then(() => {
-        if (this.sys.isActive()) this.scene.start('game', { bridge });
+        // Boss battles run their own scene; everything else is the balloon game.
+        const boss = (bridge as { session?: { config?: { boss?: string } } } | undefined)?.session?.config?.boss;
+        if (this.sys.isActive()) this.scene.start(boss ? 'boss' : 'game', { bridge });
       });
   }
 }
