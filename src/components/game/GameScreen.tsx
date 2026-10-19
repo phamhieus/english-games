@@ -14,6 +14,7 @@ import { useSettingsStore } from '@/stores/settingsStore';
 import { Button, Card } from '@/components/common/ui';
 import { STAGES, stageById, type StageDef } from '@/game/config/stages';
 import { bossById } from '@/game/config/bosses';
+import { ADVENTURE_STEPS } from '@/features/adventure/adventure';
 import { music } from '@/services/audio/music';
 import { sfx } from '@/services/audio/sfx';
 import { StageBackdrop } from './StageBackdrop';
@@ -120,7 +121,8 @@ export default function GameScreen() {
         const s = useSettingsStore.getState();
         if (!s.settings.bossesDefeated.includes(config.boss)) s.update({ bossesDefeated: [...s.settings.bossesDefeated, config.boss] });
       }
-      finishGame(record, config);
+      // An adventure plays the same words again in its next step.
+      finishGame(record, config, config.adventure ? (config.wordIds ?? loaded.bridge.session.targetIds) : undefined);
     },
     [loaded, config, finishGame],
   );
@@ -277,7 +279,16 @@ export default function GameScreen() {
         <Card className="flex flex-col gap-2 p-4 text-sm">
           <Info label="Word sets" value={config.collectionName} />
           <Info label="Stage" value={levelMode ? `${level + 1} of ${path.length} · ${stage.name}` : stage.name} />
-          <Info label="Mode" value={config.boss ? `Boss battle · ${bossById(config.boss).name}` : MODE_LABEL[config.mode]} />
+          <Info
+            label="Mode"
+            value={
+              config.adventure
+                ? `Adventure ${config.adventure.step + 1}/3 · ${config.boss ? bossById(config.boss).name : ADVENTURE_STEPS[config.adventure.step]!.title}`
+                : config.boss
+                  ? `Boss battle · ${bossById(config.boss).name}`
+                  : MODE_LABEL[config.mode]
+            }
+          />
           <Info label="Difficulty" value={DIFFICULTIES[config.difficulty].label} />
           <Info
             label="Session"

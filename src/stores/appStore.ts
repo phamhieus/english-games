@@ -1,10 +1,13 @@
 import { create } from 'zustand';
 import type { Difficulty, GameMode, PracticeSize, SessionConfig, SessionRecord, SessionStyle, StageMode } from '@/types';
 import { getDb } from '@/services/database/db';
+import { nextAdventureStep } from '@/features/adventure/adventure';
 
-export type Screen = 'home' | 'game' | 'results' | 'library' | 'skins' | 'stats' | 'settings' | 'profile' | 'bosses';
+export type Screen = 'home' | 'game' | 'results' | 'library' | 'skins' | 'stats' | 'settings' | 'profile' | 'bosses' | 'stage-clear';
 
 export interface GameSetup {
+  /** PLAY starts an adventure (copy typing → recall → boss) or the custom game below. */
+  play: 'adventure' | 'custom';
   /** Word sets practised together. */
   collectionIds: string[];
   mode: GameMode;
@@ -20,6 +23,7 @@ export interface GameSetup {
 const SETUP_KEY = 'last-setup';
 
 export const DEFAULT_SETUP: GameSetup = {
+  play: 'adventure',
   collectionIds: [],
   mode: 'recall',
   difficulty: 'easy',
@@ -29,6 +33,13 @@ export const DEFAULT_SETUP: GameSetup = {
   bossMode: 'recall',
 };
 
+/** The adventure being played: the steps finished so far and the next one. */
+export interface AdventureRun {
+  id: string;
+  records: SessionRecord[];
+  next: SessionConfig | null;
+}
+
 interface AppStore {
   screen: Screen;
   setup: GameSetup;
@@ -37,11 +48,15 @@ interface AppStore {
   sessionKey: number;
   lastResult: SessionRecord | null;
   lastConfig: SessionConfig | null;
+  adventure: AdventureRun | null;
   navigate(screen: Screen): void;
   loadSetup(): Promise<void>;
   updateSetup(patch: Partial<GameSetup>): void;
   startGame(config: SessionConfig): void;
-  finishGame(record: SessionRecord, config: SessionConfig): void;
+  /** `wordIds`: the words this game used (an adventure plays them again in the next step). */
+  finishGame(record: SessionRecord, config: SessionConfig, wordIds?: string[]): void;
+  /** Leave an adventure between steps and see its results. */
+  stopAdventure(): void;
 }
 
 export const useAppStore = create<AppStore>((set, get) => ({
@@ -51,6 +66,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   sessionKey: 0,
   lastResult: null,
   lastConfig: null,
+  adventure: null,
   navigate(screen) {
     set({ screen });
   },
@@ -77,7 +93,26 @@ export const useAppStore = create<AppStore>((set, get) => ({
   startGame(config) {
     set((s) => ({ activeSession: config, sessionKey: s.sessionKey + 1, screen: 'game' }));
   },
-  finishGame(record, config) {
-    set({ lastResult: record, lastConfig: config, activeSession: null, screen: 'results' });
+  finishGame(record, config, wordIds) {
+    const a = config.adventure;
+    if (!a) {
+      set({ lastResult: record, lastConfig: config, activeSession: null, screen: 'results' });
+      return;
+    }
+    // A won step leads to the next one on the same words; anything else ends the adventure.
+    const prev = get().adventure;
+    const records = prev?.id === a.id ? [...prev.records, record] : [record];
+    const next = record.status === 'completed' && wordIds ? nextAdventureStep(config, wordIds, config.stage ?? 'meadow') : null;
+    set({
+      adventure: { id: a.id, records, next },
+      lastResult: record,
+      lastConfig: config,
+      activeSession: null,
+      screen: next ? 'stage-clear' : 'results',
+    });
+  },
+  stopAdventure() {
+    const a = get().adventure;
+    set({ adventure: a ? { ...a, next: null } : null, screen: 'results' });
   },
 }));

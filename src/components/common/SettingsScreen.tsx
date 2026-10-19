@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DatabaseBackup, Shirt, Upload, Volume2 } from 'lucide-react';
+import { DatabaseBackup, LogOut, Shirt, Upload, UserRound, Volume2 } from 'lucide-react';
 import type { AppSettings, RecallAnnounce } from '@/types';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { speech } from '@/services/speech/speech';
@@ -8,6 +8,8 @@ import { exportBackup, importBackup, parseBackup, type BackupFile } from '@/serv
 import { downloadBlob } from '@/services/import/spreadsheet';
 import { skinById } from '@/game/config/theme';
 import { useAppStore } from '@/stores/appStore';
+import { useAccountStore } from '@/stores/accountStore';
+import { Avatar, PROVIDER_LABEL, SignInOptions, useSignOut } from '@/components/account/AccountParts';
 import { CannonPreview } from './CannonPreview';
 import { BrandTitle } from './Art';
 import { inputCls, Button, Card, ConfirmDialog, Segmented, Toggle } from './ui';
@@ -19,6 +21,9 @@ export function SettingsScreen() {
   const [backupMsg, setBackupMsg] = useState<string | null>(null);
   const [pendingRestore, setPendingRestore] = useState<BackupFile | null>(null);
   const speechAvailable = speech.available;
+  const account = useAccountStore((s) => s.status);
+  const user = useAccountStore((s) => s.user);
+  const signOut = useSignOut();
 
   const doExport = async () => {
     const data = await exportBackup();
@@ -52,6 +57,46 @@ export function SettingsScreen() {
       <h1 className="text-4xl">
         <BrandTitle>Game settings</BrandTitle>
       </h1>
+
+      <Card className="p-5" data-testid="settings-account">
+        {account === 'signed-in' && user ? (
+          <div className="flex flex-wrap items-center gap-4">
+            <Avatar name={user.name} url={user.avatarUrl} size={56} />
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg font-bold">Account</h2>
+              <p className="truncate text-sm text-ink-soft">
+                Signed in as <b className="text-ink">{user.name}</b> with {PROVIDER_LABEL[user.provider]}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="white" icon={<UserRound size={18} />} onClick={() => navigate('profile')}>
+                Profile
+              </Button>
+              <Button variant="danger" icon={<LogOut size={18} />} disabled={signOut.busy} onClick={signOut.request} data-testid="settings-signout">
+                {signOut.busy ? 'Signing out…' : 'Sign out'}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <h2 className="mb-1 text-lg font-bold">Account</h2>
+            {account === 'loading' && <p className="text-sm text-ink-soft">Checking your account…</p>}
+            {account === 'unavailable' && (
+              <p className="text-sm text-ink-soft">
+                Online accounts need the game server. Locally, run <code>npm run dev:api</code> next to <code>npm run dev</code>.
+              </p>
+            )}
+            {account === 'signed-out' && (
+              <>
+                <p className="mb-3 text-sm text-ink-soft">You are playing as a guest. Sign in to keep your words, coins, skins and trophies safe on every device.</p>
+                <div className="max-w-sm">
+                  <SignInOptions />
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </Card>
 
       <Card className="p-5">
         <h2 className="mb-1 text-lg font-bold">Appearance</h2>
@@ -229,6 +274,7 @@ export function SettingsScreen() {
         {backupMsg && <p className="mt-3 rounded-xl bg-surface px-3 py-2 text-sm font-semibold">{backupMsg}</p>}
       </Card>
 
+      {signOut.dialog}
       {pendingRestore && (
         <ConfirmDialog
           title="Restore backup?"

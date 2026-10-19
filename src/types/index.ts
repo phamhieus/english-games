@@ -86,6 +86,17 @@ export interface SessionConfig {
   /** Restrict to these words (used by "Review mistakes" on the results screen). */
   wordIds?: string[];
   seed?: number;
+  /** Set when the game is one step of an adventure (copy typing → recall → boss). */
+  adventure?: AdventureInfo;
+}
+
+export interface AdventureInfo {
+  /** Same for every step of one adventure. */
+  id: string;
+  /** 0 = copy typing, 1 = Vietnamese → English, 2 = boss fight. */
+  step: 0 | 1 | 2;
+  /** The boss waiting at the end. */
+  boss: BossId;
 }
 
 export type SessionStatus = 'completed' | 'game_over' | 'quit' | 'interrupted' | 'in_progress';

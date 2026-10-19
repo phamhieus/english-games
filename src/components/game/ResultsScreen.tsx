@@ -14,6 +14,9 @@ import { StageBackdrop } from './StageBackdrop';
 import { Button, Card, EmptyState } from '@/components/common/ui';
 import { BrandTitle, Coin, FlatBalloon, Sunburst } from '@/components/common/Art';
 import { CannonPreview } from '@/components/common/CannonPreview';
+import { combineRecords } from '@/features/adventure/adventure';
+import { useStartAdventure } from '@/hooks/useAdventure';
+import { AdventurePath } from './AdventurePath';
 
 const TITLES = {
   completed: 'Session complete!',
@@ -39,6 +42,8 @@ export function ResultsScreen() {
   const updateSettings = useSettingsStore((s) => s.update);
   const progress = useProgress();
   const achievements = useAchievements();
+  const run = useAppStore((s) => s.adventure);
+  const startAdventure = useStartAdventure();
   const [fresh, setFresh] = useState<AchievementState[] | null>(null);
 
   // Celebrate achievements unlocked since they were last shown, once.
@@ -61,19 +66,38 @@ export function ResultsScreen() {
     );
   }
 
+  // An adventure shows all its steps together.
+  const adventure = config.adventure && run?.id === config.adventure.id ? config.adventure : undefined;
+  const records = adventure && run ? run.records : [result];
+  const shown = adventure ? { ...result, ...combineRecords(records) } : result;
+  const advComplete = !!adventure && adventure.step === 2 && result.status === 'completed';
+  // Steps won; the next one is where the adventure stopped (lost, quit or "stop here").
+  const stepsWon = records.filter((r) => r.status === 'completed').length;
+  const title = adventure
+    ? advComplete
+      ? 'Adventure complete!'
+      : result.status === 'game_over'
+        ? 'Out of hearts'
+        : 'Adventure ended'
+    : result.boss
+      ? result.status === 'completed'
+        ? `${bossById(result.boss).name} defeated!`
+        : `${bossById(result.boss).name} wins`
+      : TITLES[result.status];
+
   const stats: [string, string | number][] = [
-    ['Final score', result.score],
-    ['Correct', result.correct],
-    ['Wrong attempts', result.incorrect],
-    ['Missed balloons', result.missed],
-    ['Accuracy', `${Math.round(result.accuracy * 100)}%`],
-    ['Avg. response', fmtMs(result.averageResponseTimeMs)],
-    ['Best combo', result.bestCombo],
+    ['Final score', shown.score],
+    ['Correct', shown.correct],
+    ['Wrong attempts', shown.incorrect],
+    ['Missed balloons', shown.missed],
+    ['Accuracy', `${Math.round(shown.accuracy * 100)}%`],
+    ['Avg. response', fmtMs(shown.averageResponseTimeMs)],
+    ['Best combo', shown.bestCombo],
   ];
 
-  // Rewards: the session is already saved, so `progress` includes it.
-  const xpGain = xpForSession(result);
-  const coinGain = coinsForSession(result);
+  // Rewards: the sessions are already saved, so `progress` includes them.
+  const xpGain = records.reduce((n, r) => n + xpForSession(r), 0);
+  const coinGain = records.reduce((n, r) => n + coinsForSession(r), 0);
   const after = progress ? levelFromXp(progress.xp) : null;
   const before = progress ? levelFromXp(progress.xp - xpGain) : null;
   const leveledUp = !!before && !!after && after.level > before.level;
@@ -85,13 +109,16 @@ export function ResultsScreen() {
   const reviewMistakes = () =>
     startGame({
       ...config,
-      mode: config.mode === 'copy' ? 'copy' : 'recall',
+      mode: config.mode === 'copy' && !adventure ? 'copy' : 'recall',
       style: 'practice',
       practiceSize: 'all',
-      wordIds: result.mistakes.map((m) => m.vocabularyId),
+      wordIds: shown.mistakes.map((m) => m.vocabularyId),
       seed: undefined,
       boss: undefined,
+      adventure: undefined,
     });
+  const playAgain = () =>
+    adventure ? startAdventure(config.collectionIds ?? [config.collectionId], config.collectionName) : startGame({ ...config, seed: undefined });
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4">
@@ -104,11 +131,19 @@ export function ResultsScreen() {
             <FlatBalloon color="#7cc4f5" shade="#3f98d6" className="animate-bob hidden w-10 sm:block" style={{ animationDelay: '-1.4s' }} />
           </div>
           <h1 className="relative mt-3 text-4xl sm:text-5xl" data-testid="results-title">
-            <BrandTitle onColor>
-              {result.boss ? (result.status === 'completed' ? `${bossById(result.boss).name} defeated!` : `${bossById(result.boss).name} wins`) : TITLES[result.status]}
-            </BrandTitle>
+            <BrandTitle onColor>{title}</BrandTitle>
           </h1>
           <p className="relative mt-2 font-semibold text-white/90">{result.collectionName}</p>
+          {adventure && (
+            <div className="relative mt-4 text-white" data-testid="adventure-summary">
+              <AdventurePath
+                boss={adventure.boss}
+                done={stepsWon}
+                current={advComplete ? undefined : stepsWon}
+                failed={!advComplete && result.status !== 'completed'}
+              />
+            </div>
+          )}
         </div>
         <div className="p-6 pt-5">
           {/* rewards */}
@@ -166,14 +201,18 @@ export function ResultsScreen() {
           {result.boss && result.status === 'completed' && nextBoss && (
             <button
               type="button"
-              onClick={() => navigate('bosses')}
+              onClick={() => navigate('home')}
               className="pick mb-4 flex w-full items-center gap-3 rounded-2xl bg-tint-coral px-4 py-3 text-left"
               data-testid="next-boss"
             >
               <Swords size={24} />
               <span className="min-w-0 flex-1">
-                <span className="block font-display font-bold">Next boss unlocked: {nextBoss.name}</span>
-                <span className="block text-sm text-ink-soft">{nextBoss.tagline}</span>
+                <span className="block font-display font-bold">Next boss: {nextBoss.name}</span>
+                <span className="block text-sm text-ink-soft">
+                  {after && after.level < nextBoss.minLevel
+                    ? `Reach level ${nextBoss.minLevel} to meet it in an adventure.`
+                    : 'It waits at the end of your next adventure.'}
+                </span>
               </span>
             </button>
           )}
@@ -204,10 +243,10 @@ export function ResultsScreen() {
             ))}
           </dl>
           <div className="mt-6 flex flex-wrap justify-center gap-2">
-            <Button variant="pink" icon={<Play size={18} />} onClick={() => startGame({ ...config, seed: undefined })}>
-              Play again
+            <Button variant="pink" icon={<Play size={18} />} onClick={playAgain}>
+              {adventure ? 'New adventure' : 'Play again'}
             </Button>
-            <Button variant="purple" icon={<RotateCcw size={18} />} disabled={result.mistakes.length === 0} onClick={reviewMistakes}>
+            <Button variant="purple" icon={<RotateCcw size={18} />} disabled={shown.mistakes.length === 0} onClick={reviewMistakes}>
               Review mistakes
             </Button>
             <Button variant="white" icon={<BookOpen size={18} />} onClick={() => navigate('library')}>
@@ -218,12 +257,12 @@ export function ResultsScreen() {
       </Card>
 
       <Card className="p-5">
-        <h2 className="mb-3 text-lg font-bold">Words to review ({result.mistakes.length})</h2>
-        {result.mistakes.length === 0 ? (
+        <h2 className="mb-3 text-lg font-bold">Words to review ({shown.mistakes.length})</h2>
+        {shown.mistakes.length === 0 ? (
           <p className="text-ink-soft">No mistakes this time. Wonderful!</p>
         ) : (
           <ul className="flex flex-col gap-2">
-            {result.mistakes.map((m) => (
+            {shown.mistakes.map((m) => (
               <li key={m.vocabularyId} className="flex items-start gap-3 rounded-xl border-2 border-line bg-surface p-3">
                 <button
                   type="button"

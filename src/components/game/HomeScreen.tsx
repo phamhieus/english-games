@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BookOpen, Check, Keyboard, Languages, Lock, Play, Plus, RotateCcw, Shirt, Sparkles, Swords } from 'lucide-react';
+import { BookOpen, Check, Keyboard, Languages, Lock, Map as MapIcon, Play, Plus, RotateCcw, SlidersHorizontal, Sparkles, Swords } from 'lucide-react';
 import type { Difficulty, GameMode, PracticeSize, SessionStyle } from '@/types';
 import { DIFFICULTIES } from '@/game/config/gameConfig';
 import { skinById } from '@/game/config/theme';
@@ -15,6 +15,12 @@ import { isDue, isMastered } from '@/features/learning/spacedRepetition';
 import { Button, Card, EmptyState, Segmented } from '@/components/common/ui';
 import { FlatBalloon, SET_COLORS, Sunburst } from '@/components/common/Art';
 import { CannonPreview } from '@/components/common/CannonPreview';
+import { BOSSES, adventureBoss } from '@/game/config/bosses';
+import { BASIC_PACK } from '@/features/vocabulary/packs';
+import { difficultyForLevel } from '@/features/adventure/adventure';
+import { useStartAdventure } from '@/hooks/useAdventure';
+import { AdventurePath } from './AdventurePath';
+import { BossArt } from './BossArt';
 
 const MODES: { value: GameMode; title: string; desc: string; icon: typeof Keyboard; tile: string; badge?: string }[] = [
   { value: 'copy', title: 'Copy Typing', desc: 'Hear it, type it. Letters show up as you get them right.', icon: Keyboard, tile: 'bg-candy-blue' },
@@ -43,6 +49,10 @@ const SIZES: { value: string; label: string }[] = [
   { value: 'all', label: 'All' },
 ];
 
+/** Big chunky title-screen button (same look for PLAY and BOSS BATTLE). */
+const MENU_BTN =
+  'flex items-center justify-center gap-3 rounded-2xl border-[3px] border-line font-display font-bold tracking-wide shadow-[0_7px_0_var(--color-line)] transition hover:brightness-105 active:translate-y-1.5 active:shadow-[0_1px_0_var(--color-line)] disabled:cursor-not-allowed disabled:opacity-60';
+
 function Step({ n, title, tile, aside, children }: { n: number; title: string; tile: string; aside?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div>
@@ -69,6 +79,13 @@ export function HomeScreen() {
   const openStages = unlockedStages(playerLevel);
   const nextStage = nextStageUnlock(playerLevel);
   const data = useCollectionsWords(setup.collectionIds);
+  const defeated = useSettingsStore((s) => s.settings.bossesDefeated);
+  const startAdventureGame = useStartAdventure();
+  const adventure = setup.play === 'adventure';
+  const advBoss = adventureBoss(playerLevel, defeated);
+  const advDifficulty = difficultyForLevel(playerLevel);
+  const nextNewBoss = BOSSES.find((b) => !defeated.includes(b.id));
+  const beatenBosses = BOSSES.filter((b) => defeated.includes(b.id));
   const playRef = useRef<HTMLDivElement>(null);
   const [playVisible, setPlayVisible] = useState(true);
 
@@ -77,7 +94,8 @@ export function HomeScreen() {
     if (!collections) return;
     const valid = setup.collectionIds.filter((id) => collections.some((c) => c.id === id));
     if (valid.length === 0) {
-      const first = collections.find((c) => c.wordCount > 0)?.id ?? collections[0]?.id;
+      // Basic is the default set; otherwise the first set that has words.
+      const first = (collections.find((c) => c.id === BASIC_PACK.id && c.wordCount > 0) ?? collections.find((c) => c.wordCount > 0) ?? collections[0])?.id;
       updateSetup({ collectionIds: first ? [first] : [] });
     } else if (valid.length !== setup.collectionIds.length) {
       updateSetup({ collectionIds: valid });
@@ -128,16 +146,24 @@ export function HomeScreen() {
   }
 
   // While loading, `stats` is null — don't flash an "empty" warning.
-  const poolEmpty = !!stats && (setup.mode === 'mistakes' ? stats.mistakes === 0 : stats.total === 0);
+  const poolEmpty = !!stats && (!adventure && setup.mode === 'mistakes' ? stats.mistakes === 0 : stats.total === 0);
   const allMastered = !!stats && stats.total > 0 && stats.mastered === stats.total;
   const canStart = selected.length > 0 && !!stats && !poolEmpty;
   const mode = MODES.find((m) => m.value === setup.mode) ?? MODES[1]!;
-  const summary = `${mode.title} · ${DIFFICULTIES[setup.difficulty].label} · ${
-    setup.style === 'endless' ? 'Endless' : setup.practiceSize === 'all' ? 'All words' : `${setup.practiceSize} words`
-  }`;
+  const sizeLabel = setup.practiceSize === 'all' ? 'All words' : `${setup.practiceSize} words`;
+  const summary = adventure
+    ? `Adventure · ${DIFFICULTIES[advDifficulty].label} · ${sizeLabel}`
+    : `${mode.title} · ${DIFFICULTIES[setup.difficulty].label} · ${setup.style === 'endless' ? 'Endless' : sizeLabel}`;
 
   const start = () => {
     if (!canStart) return;
+    if (adventure) {
+      startAdventureGame(
+        selected.map((c) => c.id),
+        selected.map((c) => c.name).join(' + '),
+      );
+      return;
+    }
     startGame({
       collectionId: selected[0]!.id,
       collectionIds: selected.map((c) => c.id),
@@ -153,7 +179,7 @@ export function HomeScreen() {
   };
 
   const notice = poolEmpty ? (
-    setup.mode === 'mistakes' ? 'No mistakes to review yet. Play another mode first!' : 'These sets are empty. Add some words first.'
+    !adventure && setup.mode === 'mistakes' ? 'No mistakes to review yet. Play another mode first!' : 'These sets are empty. Add some words first.'
   ) : selected.length === 0 ? (
     'Pick at least one word set.'
   ) : allMastered ? (
@@ -164,25 +190,17 @@ export function HomeScreen() {
     <>
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         {/* ── Title screen ─────────────────────────────────────── */}
-        <section className="card relative overflow-hidden rounded-3xl bg-candy-purple px-5 pt-6 pb-6 text-white lg:sticky lg:top-0 lg:self-start">
+        <section className="card relative overflow-hidden rounded-3xl bg-candy-purple px-5 pt-5 pb-5 text-white lg:sticky lg:top-0 lg:self-start">
           <Sunburst />
           <div className="relative flex flex-col items-center text-center">
-            <span className="rounded-full border-2 border-line bg-candy-sun px-3 py-0.5 text-xs font-extrabold tracking-widest text-ink uppercase shadow-[0_2px_0_var(--color-line)]">
-              Vocabulary arcade
-            </span>
-            {/* logo balloon + title, like the header logo */}
-            <div className="mt-4 flex items-center justify-center gap-2 sm:gap-4">
-              <FlatBalloon
-                color="#d6402e"
-                shade="#a52e20"
-                className="animate-wiggle w-[52px] shrink-0 origin-bottom drop-shadow-[0_5px_0_var(--color-line)] sm:w-[92px]"
-              />
-              <h1 className="text-left" aria-label="Word Shooter">
-                <span className="block font-display text-6xl leading-[0.9] font-bold tracking-tight text-white sm:text-8xl">Word</span>
-                <span className="block font-display text-6xl leading-[0.9] font-bold tracking-tight text-brand sm:text-8xl">Shooter</span>
+            {/* small one-line logo: the cannon is the star here */}
+            <div className="flex items-center justify-center gap-2">
+              <FlatBalloon color="#d6402e" shade="#a52e20" className="animate-wiggle w-[28px] shrink-0 origin-bottom sm:w-[34px]" />
+              <h1 className="font-display text-4xl leading-none font-bold tracking-tight sm:text-5xl" aria-label="Word Shooter">
+                <span className="text-white">Word</span>
+                <span className="text-brand">Shooter</span>
               </h1>
             </div>
-            <p className="mt-4 max-w-xs font-semibold text-white/90">Type the word, pop the balloon, level up your English.</p>
 
             {/* mascot scene */}
             <div className="relative mt-2 h-60 w-full max-w-md sm:h-72" aria-hidden>
@@ -203,40 +221,32 @@ export function HomeScreen() {
               </div>
             </div>
 
-            <div ref={playRef} className="mt-4">
-              <span className={`inline-block ${canStart ? 'animate-[pulse-soft_1.8s_ease-in-out_infinite]' : ''}`}>
+            {/* game menu: PLAY and the boss fights side by side */}
+            <div ref={playRef} className="mt-4 flex w-full max-w-sm items-stretch gap-3">
+              <span className={`block flex-1 ${canStart ? 'animate-[pulse-soft_1.8s_ease-in-out_infinite]' : ''}`}>
                 <button
                   type="button"
                   aria-label="Start game"
                   disabled={!canStart}
                   onClick={start}
-                  className="flex items-center gap-3 rounded-2xl border-[3px] border-line bg-candy-sun px-12 py-3.5 font-display text-4xl font-bold tracking-wide text-ink shadow-[0_7px_0_var(--color-line)] transition hover:brightness-105 active:translate-y-1.5 active:shadow-[0_1px_0_var(--color-line)] disabled:cursor-not-allowed disabled:opacity-60"
+                  className={`${MENU_BTN} h-full w-full bg-candy-sun py-3 text-3xl text-ink`}
                 >
-                  <Play size={32} fill="currentColor" strokeWidth={2.5} /> PLAY
+                  <Play size={26} fill="currentColor" strokeWidth={2.5} /> PLAY
                 </button>
               </span>
+              <button
+                type="button"
+                onClick={() => navigate('bosses')}
+                aria-label="Boss battle"
+                className={`${MENU_BTN} gap-2 bg-candy-pink px-5 text-xl text-white`}
+                data-testid="open-bosses"
+              >
+                <Swords size={22} strokeWidth={2.5} /> BOSS
+              </button>
             </div>
-            <p className="mt-4 text-sm font-bold text-white/90">{summary}</p>
             {notice && (
-              <p className="mt-2 rounded-xl border-2 border-line bg-surface px-3 py-1.5 text-sm font-semibold text-ink">{notice}</p>
+              <p className="mt-4 rounded-xl border-2 border-line bg-surface px-3 py-1.5 text-sm font-semibold text-ink">{notice}</p>
             )}
-
-            <button
-              type="button"
-              onClick={() => navigate('bosses')}
-              className="btn-candy mt-4 flex items-center gap-2 rounded-2xl bg-candy-pink px-6 py-2.5 font-display text-xl font-bold tracking-wide text-white"
-              data-testid="open-bosses"
-            >
-              <Swords size={22} strokeWidth={2.5} /> BOSS BATTLE
-            </button>
-            <div className="mt-5 flex flex-wrap justify-center gap-2">
-              <Button size="sm" variant="white" icon={<Shirt size={16} />} onClick={() => navigate('skins')}>
-                Skin: {skin.name}
-              </Button>
-              <Button size="sm" variant="white" icon={<Plus size={16} />} onClick={() => navigate('library')}>
-                Add words
-              </Button>
-            </div>
           </div>
         </section>
 
@@ -265,6 +275,33 @@ export function HomeScreen() {
           </div>
 
           <div className="flex flex-col gap-6 p-5">
+            {/* Adventure (the guided path) or Custom (pick everything yourself) */}
+            <div className="grid grid-cols-2 gap-2 rounded-2xl border-2 border-line bg-line p-1.5" role="tablist" aria-label="Play">
+              {(
+                [
+                  { value: 'adventure', label: 'Adventure', icon: MapIcon },
+                  { value: 'custom', label: 'Custom', icon: SlidersHorizontal },
+                ] as const
+              ).map(({ value, label, icon: Icon }) => {
+                const on = setup.play === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    role="tab"
+                    aria-selected={on}
+                    onClick={() => updateSetup({ play: value })}
+                    className={`flex items-center justify-center gap-2 rounded-xl py-2.5 font-display text-lg font-bold transition ${
+                      on ? 'bg-candy-sun text-ink shadow-[0_3px_0_rgb(0_0_0/0.35)]' : 'text-white/80 hover:bg-white/10 hover:text-white'
+                    }`}
+                    data-testid={`play-${value}`}
+                  >
+                    <Icon size={20} strokeWidth={2.5} /> {label}
+                  </button>
+                );
+              })}
+            </div>
+
             <Step
               n={1}
               title="Word sets"
@@ -302,6 +339,37 @@ export function HomeScreen() {
               {selected.length > 1 && <p className="mt-2 text-sm font-bold text-candy-purple-dark">{selected.length} sets mixed together</p>}
             </Step>
 
+            {adventure ? (
+              <>
+                <Step n={2} title="Your adventure" tile="bg-[#ff7fb8]">
+                  <div className="rounded-2xl border-2 border-line bg-tint-purple px-3 py-4" data-testid="adventure-path">
+                    <AdventurePath boss={advBoss.id} current={0} />
+                    <p className="mt-3 text-center text-sm text-ink-soft">
+                      Meet the words, recall them, then beat <b className="text-ink">{advBoss.name}</b> with them.
+                      {defeated.includes(advBoss.id) &&
+                        (nextNewBoss ? ` Reach level ${nextNewBoss.minLevel} to meet ${nextNewBoss.name}.` : ' Every boss is beaten: rematch the toughest!')}
+                    </p>
+                  </div>
+                  <p className="mt-2 flex flex-wrap items-center gap-1.5 text-sm text-ink-soft">
+                    <span className="rounded-full border-2 border-line bg-surface px-2.5 py-0.5 font-display font-bold text-ink">Level {playerLevel}</span>
+                    <span className={`rounded-full border-2 border-line px-2.5 py-0.5 font-display font-bold text-ink ${DIFF_STYLE[advDifficulty].on}`}>
+                      {DIFFICULTIES[advDifficulty].label}
+                    </span>
+                    Difficulty grows with your level.
+                  </p>
+                </Step>
+
+                <Step n={3} title="Words per adventure" tile="bg-candy-mint">
+                  <Segmented<string>
+                    label="Words per adventure"
+                    value={String(setup.practiceSize)}
+                    onChange={(v) => updateSetup({ practiceSize: (v === 'all' ? 'all' : Number(v)) as PracticeSize })}
+                    options={SIZES}
+                  />
+                </Step>
+              </>
+            ) : (
+              <>
             <Step n={2} title="Game mode" tile="bg-[#ff7fb8]">
               <div className="grid gap-3 sm:grid-cols-3" role="radiogroup" aria-label="Game mode">
                 {MODES.map((m) => {
@@ -447,6 +515,39 @@ export function HomeScreen() {
                 {nextStage ? ` · ${nextStage.name} unlocks at level ${nextStage.unlock}` : ' · all unlocked!'}
               </p>
             </Step>
+            <Step n={6} title="Boss rematch" tile="bg-candy-pink">
+              <button
+                type="button"
+                onClick={() => navigate('bosses')}
+                className="pick flex w-full items-center gap-3 rounded-2xl bg-surface px-3 py-2.5 text-left"
+                data-testid="custom-bosses"
+              >
+                {beatenBosses.length ? (
+                  <span className="flex -space-x-3">
+                    {beatenBosses.map((b) => (
+                      <span key={b.id} className="rounded-full border-2 border-line bg-tint-purple">
+                        <BossArt id={b.id} size={40} />
+                      </span>
+                    ))}
+                  </span>
+                ) : (
+                  <span className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-line bg-tint-purple">
+                    <Lock size={18} strokeWidth={3} />
+                  </span>
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="block font-display font-bold">
+                    {beatenBosses.length ? `${beatenBosses.length} of ${BOSSES.length} bosses beaten` : 'No bosses beaten yet'}
+                  </span>
+                  <span className="block text-xs text-ink-soft">
+                    {beatenBosses.length ? 'Fight them again any time.' : 'Beat one at the end of an adventure to unlock rematches.'}
+                  </span>
+                </span>
+                <Swords size={20} />
+              </button>
+            </Step>
+              </>
+            )}
           </div>
         </section>
       </div>
