@@ -16,6 +16,7 @@ import { Button, Card, EmptyState, Segmented } from '@/components/common/ui';
 import { FlatBalloon, SET_COLORS, Sunburst } from '@/components/common/Art';
 import { CannonPreview } from '@/components/common/CannonPreview';
 import { BOSSES, adventureBoss } from '@/game/config/bosses';
+import { BASIC_PACK } from '@/features/vocabulary/packs';
 import { difficultyForLevel } from '@/features/adventure/adventure';
 import { useStartAdventure } from '@/hooks/useAdventure';
 import { AdventurePath } from './AdventurePath';
@@ -93,7 +94,8 @@ export function HomeScreen() {
     if (!collections) return;
     const valid = setup.collectionIds.filter((id) => collections.some((c) => c.id === id));
     if (valid.length === 0) {
-      const first = collections.find((c) => c.wordCount > 0)?.id ?? collections[0]?.id;
+      // Basic is the default set; otherwise the first set that has words.
+      const first = (collections.find((c) => c.id === BASIC_PACK.id && c.wordCount > 0) ?? collections.find((c) => c.wordCount > 0) ?? collections[0])?.id;
       updateSetup({ collectionIds: first ? [first] : [] });
     } else if (valid.length !== setup.collectionIds.length) {
       updateSetup({ collectionIds: valid });

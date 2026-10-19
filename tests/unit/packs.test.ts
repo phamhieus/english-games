@@ -2,12 +2,13 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { IDBFactory, IDBKeyRange } from 'fake-indexeddb';
 import { CEFR_LEVELS } from '@/types';
 import { createDbForTesting, setDbForTesting, type WordShooterDB } from '@/services/database/db';
-import { deleteCollection, listWords } from '@/services/database/repositories';
-import { addNewPacks, addPack } from '@/services/database/seed';
-import { PRONUNCIATION_PACK, PRONUNCIATION_SLIDES, packWords } from '@/features/vocabulary/packs';
+import { addWord, createCollection, listWords } from '@/services/database/repositories';
+import { addPack, replaceOldStarterSets, seedIfFirstRun } from '@/services/database/seed';
+import { BASIC_PACK, PRONUNCIATION_SLIDES, packWords } from '@/features/vocabulary/packs';
+import { OLD_STARTER_NAME } from '@/features/vocabulary/sampleData';
 
-describe('pronunciation pack', () => {
-  const words = PRONUNCIATION_PACK.words;
+describe('Basic set', () => {
+  const words = BASIC_PACK.words;
   const find = (english: string) => words.find((w) => w.english === english)!;
 
   it('keeps every slide word once', () => {
@@ -44,7 +45,7 @@ describe('pronunciation pack', () => {
   });
 });
 
-describe('built-in packs in the library', () => {
+describe('Basic in the library', () => {
   let db: WordShooterDB;
   beforeEach(async () => {
     db = createDbForTesting('packs-db', { indexedDB: new IDBFactory(), IDBKeyRange });
@@ -56,19 +57,33 @@ describe('built-in packs in the library', () => {
     setDbForTesting(null);
   });
 
-  it('adds a pack once, under fixed ids, and never brings back a deleted one', async () => {
-    await addNewPacks();
-    await addNewPacks();
-    expect(await db.collections.count()).toBe(1);
-    const saved = await listWords(PRONUNCIATION_PACK.id);
+  it('is the set a new player starts with, under fixed ids', async () => {
+    await seedIfFirstRun();
+    const sets = await db.collections.toArray();
+    expect(sets.map((c) => c.name)).toEqual(['Basic']);
+    const saved = await listWords(BASIC_PACK.id);
     expect(saved).toHaveLength(166);
-    expect(saved.find((w) => w.english === 'potato')?.id).toBe('pack-pronunciation:potato');
-
-    await addPack(PRONUNCIATION_PACK); // already there: no copy
+    expect(saved.find((w) => w.english === 'potato')?.id).toBe('basic:potato');
+    await addPack(BASIC_PACK); // already there: no second copy
     expect(await db.vocabulary.count()).toBe(166);
+  });
 
-    await deleteCollection(PRONUNCIATION_PACK.id);
-    await addNewPacks();
-    expect(await db.collections.count()).toBe(0);
+  it('replaces an untouched old Starter Pack and the earlier pronunciation copy', async () => {
+    const starter = await createCollection(OLD_STARTER_NAME);
+    await addWord(starter.id, { english: 'apple', vietnamese: 'quả táo' });
+    await db.collections.put({ id: 'pack-pronunciation', name: 'Pronunciation Pack', createdAt: 0, updatedAt: 0 });
+
+    expect(await replaceOldStarterSets()).toBe(true);
+    expect((await db.collections.toArray()).map((c) => c.name)).toEqual(['Basic']);
+    // Nothing left to replace the next time.
+    expect(await replaceOldStarterSets()).toBe(false);
+  });
+
+  it('keeps a Starter Pack the player added their own words to', async () => {
+    const starter = await createCollection(OLD_STARTER_NAME);
+    await addWord(starter.id, { english: 'apple', vietnamese: 'quả táo' });
+    await addWord(starter.id, { english: 'dragonfruit', vietnamese: 'thanh long' });
+    expect(await replaceOldStarterSets()).toBe(false);
+    expect((await db.collections.toArray()).map((c) => c.name)).toEqual([OLD_STARTER_NAME]);
   });
 });

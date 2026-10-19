@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { BarChart3, BookOpen, Gamepad2, Settings as SettingsIcon, Shirt, TriangleAlert } from 'lucide-react';
 import { isPersistent, openDatabase } from '@/services/database/db';
 import { markInterruptedSessions } from '@/services/database/repositories';
-import { addNewPacks, seedIfFirstRun } from '@/services/database/seed';
+import { replaceOldStarterSets, seedIfFirstRun } from '@/services/database/seed';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useAppStore, type Screen } from '@/stores/appStore';
 import { useViewportHeight } from '@/hooks/useViewportHeight';
@@ -81,7 +81,7 @@ export function App() {
       await openDatabase();
       await markInterruptedSessions().catch(() => 0);
       await seedIfFirstRun().catch((e: unknown) => console.warn('[seed]', e));
-      await addNewPacks().catch((e: unknown) => console.warn('[packs]', e));
+      await replaceOldStarterSets().catch((e: unknown) => console.warn('[basic]', e));
       await Promise.all([useSettingsStore.getState().load(), useAppStore.getState().loadSetup()]);
       if (!cancelled) setReady(true);
     })().catch((e: unknown) => {

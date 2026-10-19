@@ -142,7 +142,7 @@ export function LibraryScreen() {
           <div className="flex flex-col gap-2 text-sm text-ink-soft">
             No collections yet.
             <Button size="sm" icon={<Sparkles size={16} />} onClick={() => void addSampleCollection().then(setSelectedId)}>
-              Add demo words
+              Add the Basic set
             </Button>
           </div>
         )}

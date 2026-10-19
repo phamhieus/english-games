@@ -2,8 +2,8 @@ import type { CefrLevel } from '@/types';
 import type { VocabularyDraft } from '@/services/database/repositories';
 
 /**
- * Built-in word sets. Their collection and word ids are fixed, so a pack is added once per
- * browser and two synced devices that both added it merge into one copy.
+ * Built-in word sets. Their collection and word ids are fixed, so two synced devices that
+ * both have a pack merge into one copy.
  */
 export interface WordPack {
   id: string;
@@ -264,14 +264,16 @@ export function packWords(groups: readonly { sound: string; rows: readonly Row[]
   return [...byWord.values()];
 }
 
-export const PRONUNCIATION_PACK: WordPack = {
-  id: 'pack-pronunciation',
-  name: 'Pronunciation Pack',
-  description: 'Words for 10 English sounds: /p/ /b/ /t/ /d/ /eə/ /ʊə/ /aʊ/ /ɪə/ /ɔɪ/ /əʊ/. Search "sound /p/" to see one group.',
+/** The default set: everyday words for 10 English sounds, from the pronunciation slides. */
+export const BASIC_PACK: WordPack = {
+  id: 'basic',
+  name: 'Basic',
+  description: 'Everyday words for 10 English sounds: /p/ /b/ /t/ /d/ /eə/ /ʊə/ /aʊ/ /ɪə/ /ɔɪ/ /əʊ/. Search "sound /p/" to see one group.',
   words: packWords(PRONUNCIATION_SLIDES),
 };
 
-export const WORD_PACKS: readonly WordPack[] = [PRONUNCIATION_PACK];
+/** Ids of earlier built-in copies of these words, replaced by Basic. */
+export const OLD_PACK_IDS: readonly string[] = ['pack-pronunciation'];
 
 /** Stable id of a pack word, so the same pack on two devices merges into one. */
 export const packWordId = (pack: WordPack, english: string) => `${pack.id}:${english.toLowerCase()}`;
