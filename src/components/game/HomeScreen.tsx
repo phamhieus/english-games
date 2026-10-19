@@ -168,19 +168,15 @@ export function HomeScreen() {
     <>
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         {/* ── Title screen ─────────────────────────────────────── */}
-        <section className="card relative overflow-hidden rounded-3xl bg-candy-purple px-5 pt-6 pb-6 text-white lg:sticky lg:top-0 lg:self-start">
+        <section className="card relative overflow-hidden rounded-3xl bg-candy-purple px-5 pt-5 pb-5 text-white lg:sticky lg:top-0 lg:self-start">
           <Sunburst />
           <div className="relative flex flex-col items-center text-center">
-            {/* logo balloon + title, like the header logo */}
-            <div className="flex items-center justify-center gap-2 sm:gap-4">
-              <FlatBalloon
-                color="#d6402e"
-                shade="#a52e20"
-                className="animate-wiggle w-[52px] shrink-0 origin-bottom drop-shadow-[0_5px_0_var(--color-line)] sm:w-[92px]"
-              />
-              <h1 className="text-left" aria-label="Word Shooter">
-                <span className="block font-display text-6xl leading-[0.9] font-bold tracking-tight text-white sm:text-8xl">Word</span>
-                <span className="block font-display text-6xl leading-[0.9] font-bold tracking-tight text-brand sm:text-8xl">Shooter</span>
+            {/* small one-line logo: the cannon is the star here */}
+            <div className="flex items-center justify-center gap-2">
+              <FlatBalloon color="#d6402e" shade="#a52e20" className="animate-wiggle w-[28px] shrink-0 origin-bottom sm:w-[34px]" />
+              <h1 className="font-display text-4xl leading-none font-bold tracking-tight sm:text-5xl" aria-label="Word Shooter">
+                <span className="text-white">Word</span>
+                <span className="text-brand">Shooter</span>
               </h1>
             </div>
 
@@ -203,21 +199,27 @@ export function HomeScreen() {
               </div>
             </div>
 
-            {/* game menu: two big buttons, nothing else */}
-            <div ref={playRef} className="mt-5 flex w-full max-w-xs flex-col gap-4">
-              <span className={`block ${canStart ? 'animate-[pulse-soft_1.8s_ease-in-out_infinite]' : ''}`}>
+            {/* game menu: PLAY and the boss fights side by side */}
+            <div ref={playRef} className="mt-4 flex w-full max-w-sm items-stretch gap-3">
+              <span className={`block flex-1 ${canStart ? 'animate-[pulse-soft_1.8s_ease-in-out_infinite]' : ''}`}>
                 <button
                   type="button"
                   aria-label="Start game"
                   disabled={!canStart}
                   onClick={start}
-                  className={`${MENU_BTN} w-full bg-candy-sun py-3.5 text-4xl text-ink`}
+                  className={`${MENU_BTN} h-full w-full bg-candy-sun py-3 text-3xl text-ink`}
                 >
-                  <Play size={32} fill="currentColor" strokeWidth={2.5} /> PLAY
+                  <Play size={26} fill="currentColor" strokeWidth={2.5} /> PLAY
                 </button>
               </span>
-              <button type="button" onClick={() => navigate('bosses')} className={`${MENU_BTN} w-full bg-candy-pink py-3 text-2xl text-white`} data-testid="open-bosses">
-                <Swords size={24} strokeWidth={2.5} /> BOSS BATTLE
+              <button
+                type="button"
+                onClick={() => navigate('bosses')}
+                aria-label="Boss battle"
+                className={`${MENU_BTN} gap-2 bg-candy-pink px-5 text-xl text-white`}
+                data-testid="open-bosses"
+              >
+                <Swords size={22} strokeWidth={2.5} /> BOSS
               </button>
             </div>
             {notice && (
