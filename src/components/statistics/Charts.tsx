@@ -9,9 +9,9 @@ import { useState } from 'react';
 const W = 560;
 const H = 220;
 const PAD = { top: 16, right: 12, bottom: 28, left: 36 };
-const SERIES = '#7b6ad8';
-const GRID = 'rgba(45,42,74,0.08)';
-const INK_MUTED = '#6b6890';
+const SERIES = 'var(--chart-series)';
+const GRID = 'var(--chart-grid)';
+const INK_MUTED = 'var(--color-ink-soft)';
 
 interface Tip {
   x: number;
@@ -23,7 +23,7 @@ function Tooltip({ tip }: { tip: Tip | null }) {
   if (!tip) return null;
   return (
     <div
-      className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-xl bg-ink px-2.5 py-1 text-xs font-semibold text-white shadow"
+      className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-xl bg-line px-2.5 py-1 text-xs font-semibold text-white shadow"
       style={{ left: `${(tip.x / W) * 100}%`, top: `${(tip.y / H) * 100}%`, marginTop: -8 }}
     >
       {tip.text}
@@ -104,7 +104,7 @@ export function BarChart({
             </g>
           );
         })}
-        <line x1={PAD.left} x2={W - PAD.right} y1={PAD.top + innerH} y2={PAD.top + innerH} stroke="rgba(45,42,74,0.25)" />
+        <line x1={PAD.left} x2={W - PAD.right} y1={PAD.top + innerH} y2={PAD.top + innerH} stroke="var(--color-ink-soft)" />
       </svg>
       <Tooltip tip={tip} />
     </div>
@@ -148,10 +148,10 @@ export function LineChart({
         ))}
         {data.length > 1 && <polyline points={points} fill="none" stroke={SERIES} strokeWidth={2} strokeLinejoin="round" />}
         {data.map((d, i) => (
-          <circle key={d.key} cx={x(i)} cy={y(d.value)} r={hover === i ? 5.5 : 4} fill={SERIES} stroke="#fff" strokeWidth={2} />
+          <circle key={d.key} cx={x(i)} cy={y(d.value)} r={hover === i ? 5.5 : 4} fill={SERIES} stroke="var(--color-card)" strokeWidth={2} />
         ))}
         {hovered && hover !== null && (
-          <line x1={x(hover)} x2={x(hover)} y1={PAD.top} y2={PAD.top + innerH} stroke="rgba(45,42,74,0.3)" strokeDasharray="3 3" />
+          <line x1={x(hover)} x2={x(hover)} y1={PAD.top} y2={PAD.top + innerH} stroke="var(--color-ink-soft)" strokeDasharray="3 3" />
         )}
         <text x={PAD.left} y={H - 8} fontSize="11" fill={INK_MUTED}>
           {data[0]?.label}

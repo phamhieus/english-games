@@ -1,19 +1,29 @@
 import { useState } from 'react';
-import { DatabaseBackup, Upload, Volume2 } from 'lucide-react';
-import type { RecallAnnounce } from '@/types';
+import { DatabaseBackup, LogOut, Shirt, Upload, UserRound, Volume2 } from 'lucide-react';
+import type { AppSettings, RecallAnnounce } from '@/types';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { speech } from '@/services/speech/speech';
 import { sfx } from '@/services/audio/sfx';
 import { exportBackup, importBackup, parseBackup, type BackupFile } from '@/services/database/backup';
 import { downloadBlob } from '@/services/import/spreadsheet';
-import { Button, Card, ConfirmDialog, Segmented, Toggle } from './ui';
+import { skinById } from '@/game/config/theme';
+import { useAppStore } from '@/stores/appStore';
+import { useAccountStore } from '@/stores/accountStore';
+import { Avatar, PROVIDER_LABEL, SignInOptions, useSignOut } from '@/components/account/AccountParts';
+import { CannonPreview } from './CannonPreview';
+import { BrandTitle } from './Art';
+import { inputCls, Button, Card, ConfirmDialog, Segmented, Toggle } from './ui';
 
 export function SettingsScreen() {
   const settings = useSettingsStore((s) => s.settings);
   const update = useSettingsStore((s) => s.update);
+  const navigate = useAppStore((s) => s.navigate);
   const [backupMsg, setBackupMsg] = useState<string | null>(null);
   const [pendingRestore, setPendingRestore] = useState<BackupFile | null>(null);
   const speechAvailable = speech.available;
+  const account = useAccountStore((s) => s.status);
+  const user = useAccountStore((s) => s.user);
+  const signOut = useSignOut();
 
   const doExport = async () => {
     const data = await exportBackup();
@@ -44,7 +54,64 @@ export function SettingsScreen() {
 
   return (
     <div className="mx-auto grid max-w-3xl gap-4">
-      <h1 className="text-3xl font-bold text-candy-purple-dark">Settings</h1>
+      <h1 className="text-4xl">
+        <BrandTitle>Game settings</BrandTitle>
+      </h1>
+
+      <Card className="p-5" data-testid="settings-account">
+        {account === 'signed-in' && user ? (
+          <div className="flex flex-wrap items-center gap-4">
+            <Avatar name={user.name} url={user.avatarUrl} size={56} />
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg font-bold">Account</h2>
+              <p className="truncate text-sm text-ink-soft">
+                Signed in as <b className="text-ink">{user.name}</b> with {PROVIDER_LABEL[user.provider]}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="white" icon={<UserRound size={18} />} onClick={() => navigate('profile')}>
+                Profile
+              </Button>
+              <Button variant="danger" icon={<LogOut size={18} />} disabled={signOut.busy} onClick={signOut.request} data-testid="settings-signout">
+                {signOut.busy ? 'Signing out…' : 'Sign out'}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <h2 className="mb-1 text-lg font-bold">Account</h2>
+            {account === 'loading' && <p className="text-sm text-ink-soft">Checking your account…</p>}
+            {account === 'unavailable' && (
+              <p className="text-sm text-ink-soft">
+                Online accounts need the game server. Locally, run <code>npm run dev:api</code> next to <code>npm run dev</code>.
+              </p>
+            )}
+            {account === 'signed-out' && (
+              <>
+                <p className="mb-3 text-sm text-ink-soft">You are playing as a guest. Sign in to keep your words, coins, skins and trophies safe on every device.</p>
+                <div className="max-w-sm">
+                  <SignInOptions />
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </Card>
+
+      <Card className="p-5">
+        <h2 className="mb-1 text-lg font-bold">Appearance</h2>
+        <p className="mb-3 text-sm text-ink-soft">Dark is easier on the eyes, especially in the evening.</p>
+        <Segmented<AppSettings['theme']>
+          label="Theme"
+          value={settings.theme}
+          onChange={(theme) => update({ theme })}
+          options={[
+            { value: 'dark', label: 'Dark' },
+            { value: 'light', label: 'Light' },
+            { value: 'system', label: 'Same as device' },
+          ]}
+        />
+      </Card>
 
       <Card className="p-5">
         <h2 className="mb-1 text-lg font-bold">Sound</h2>
@@ -60,7 +127,26 @@ export function SettingsScreen() {
             disabled={!settings.soundEnabled}
             onChange={(e) => update({ sfxVolume: Number(e.target.value) })}
             onPointerUp={() => sfx.play('pop')}
-            className="flex-1 accent-candy-pink"
+            className="flex-1 accent-candy-purple"
+          />
+        </label>
+        <Toggle
+          label="Background music"
+          description="A cheerful tune for the menus and a different one for every stage."
+          checked={settings.musicEnabled}
+          onChange={(musicEnabled) => update({ musicEnabled })}
+        />
+        <label className="flex items-center gap-3 py-2">
+          <span className="w-28 font-semibold">Music volume</span>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={settings.musicVolume}
+            disabled={!settings.musicEnabled}
+            onChange={(e) => update({ musicVolume: Number(e.target.value) })}
+            className="flex-1 accent-candy-purple"
           />
         </label>
       </Card>
@@ -68,7 +154,7 @@ export function SettingsScreen() {
       <Card className="p-5">
         <h2 className="mb-1 text-lg font-bold">Voice & pronunciation</h2>
         {!speechAvailable && (
-          <p className="mb-2 rounded-2xl bg-candy-sun/40 px-3 py-2 text-sm">Speech isn’t available in this browser — the game works fine without it.</p>
+          <p className="mb-2 rounded-xl bg-candy-sun/40 px-3 py-2 text-sm">Speech isn’t available in this browser — the game works fine without it.</p>
         )}
         <Toggle label="Pronunciation" description="Use the browser’s voice to read words." checked={settings.speechEnabled} onChange={(speechEnabled) => update({ speechEnabled })} />
         <Toggle
@@ -131,6 +217,40 @@ export function SettingsScreen() {
         <Toggle label="Reduced motion" description="Minimise movement and effects." checked={settings.reducedMotion} onChange={(reducedMotion) => update({ reducedMotion })} />
       </Card>
 
+      <Card className="flex items-center gap-4 p-5">
+        <CannonPreview skin={skinById(settings.cannonSkin)} size={56} />
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg font-bold">Cannon skin</h2>
+          <p className="text-sm text-ink-soft">
+            You are using <b>{skinById(settings.cannonSkin).name}</b>. Try the others in the skin locker.
+          </p>
+        </div>
+        <Button variant="pink" icon={<Shirt size={18} />} onClick={() => navigate('skins')}>
+          Open skins
+        </Button>
+      </Card>
+
+      <Card className="p-5">
+        <h2 className="mb-1 text-lg font-bold">AI helper (DeepSeek)</h2>
+        <p className="mb-3 text-sm text-ink-soft">
+          Optional. When adding words from images or text, the AI can fix typos and fill in missing Vietnamese meanings. Your list is sent to
+          DeepSeek only when you press “Tidy with DeepSeek AI”. The key is stored only in this browser and is not included in backups.
+        </p>
+        <label className="block text-sm">
+          <span className="mb-0.5 block font-semibold text-ink-soft">DeepSeek API key</span>
+          <input
+            type="password"
+            autoComplete="off"
+            spellCheck={false}
+            className={inputCls}
+            placeholder="sk-…"
+            value={settings.deepseekApiKey}
+            data-testid="deepseek-key"
+            onChange={(e) => update({ deepseekApiKey: e.target.value.trim() })}
+          />
+        </label>
+      </Card>
+
       <Card className="p-5">
         <h2 className="mb-1 text-lg font-bold">Backup</h2>
         <p className="mb-3 text-sm text-ink-soft">All data lives in this browser. Export a backup to move it to another device.</p>
@@ -138,7 +258,7 @@ export function SettingsScreen() {
           <Button variant="mint" icon={<DatabaseBackup size={18} />} onClick={() => void doExport()}>
             Export backup
           </Button>
-          <label className="btn-candy inline-flex cursor-pointer items-center gap-2 rounded-2xl bg-white px-4 py-2 font-semibold">
+          <label className="btn-candy inline-flex cursor-pointer items-center gap-2 rounded-xl bg-surface px-4 py-2 font-semibold">
             <Upload size={18} /> Restore backup
             <input
               type="file"
@@ -151,9 +271,10 @@ export function SettingsScreen() {
             />
           </label>
         </div>
-        {backupMsg && <p className="mt-3 rounded-2xl bg-white px-3 py-2 text-sm font-semibold">{backupMsg}</p>}
+        {backupMsg && <p className="mt-3 rounded-xl bg-surface px-3 py-2 text-sm font-semibold">{backupMsg}</p>}
       </Card>
 
+      {signOut.dialog}
       {pendingRestore && (
         <ConfirmDialog
           title="Restore backup?"

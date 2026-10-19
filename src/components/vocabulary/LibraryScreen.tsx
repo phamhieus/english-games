@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   BookOpen,
   Download,
-  FileDown,
   Pencil,
   Play,
   Plus,
@@ -16,13 +15,15 @@ import { CEFR_LEVELS, type VocabularyItem, type WordProgress } from '@/types';
 import { useCollections, useCollectionWords } from '@/hooks/useLibrary';
 import { createCollection, deleteCollection, deleteWords, renameCollection } from '@/services/database/repositories';
 import { addSampleCollection } from '@/services/database/seed';
-import { downloadTemplate, exportCsv } from '@/services/import/spreadsheet';
+import { exportCsv } from '@/services/import/spreadsheet';
 import { isDue, isMastered } from '@/features/learning/spacedRepetition';
 import { mistakeWeight } from '@/features/learning/selection';
 import { speech } from '@/services/speech/speech';
 import { useAppStore } from '@/stores/appStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { Button, Card, ConfirmDialog, EmptyState, Modal, inputCls } from '@/components/common/ui';
+import { FlatBalloon, SET_COLORS } from '@/components/common/Art';
+
 import { WordFormModal } from './WordFormModal';
 import { ImportDialog } from './ImportDialog';
 
@@ -42,7 +43,7 @@ export function LibraryScreen() {
   const updateSetup = useAppStore((s) => s.updateSetup);
   const navigate = useAppStore((s) => s.navigate);
   const speechRate = useSettingsStore((s) => s.settings.speechRate);
-  const [selectedId, setSelectedId] = useState<string | null>(setup.collectionId);
+  const [selectedId, setSelectedId] = useState<string | null>(setup.collectionIds[0] ?? null);
   const data = useCollectionWords(selectedId);
   const [query, setQuery] = useState('');
   const [level, setLevel] = useState('');
@@ -109,13 +110,13 @@ export function LibraryScreen() {
     <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
       <Card className="flex flex-col gap-2 p-4 lg:self-start">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold">Collections</h2>
+          <h2 className="text-lg font-bold">Word sets</h2>
           <Button size="sm" variant="mint" icon={<Plus size={16} />} onClick={() => setNaming({ mode: 'create', value: '' })}>
             New
           </Button>
         </div>
         <ul className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible" aria-label="Collections">
-          {collections?.map((c) => (
+          {collections?.map((c, i) => (
             <li key={c.id} className="shrink-0">
               <button
                 type="button"
@@ -124,11 +125,14 @@ export function LibraryScreen() {
                   setLimit(PAGE);
                 }}
                 aria-current={c.id === selectedId}
-                className={`flex w-full items-center justify-between gap-3 rounded-2xl px-3 py-2 text-left font-semibold transition ${
-                  c.id === selectedId ? 'bg-candy-purple text-white shadow' : 'bg-white hover:bg-white/70'
+                className={`flex w-full items-center justify-between gap-3 rounded-xl border-2 px-3 py-2 text-left font-semibold transition ${
+                  c.id === selectedId ? 'border-line bg-candy-purple text-white shadow-[0_3px_0_var(--color-line)]' : 'border-line/15 bg-surface hover:border-line'
                 }`}
               >
-                <span className="truncate">{c.name}</span>
+                <span className="flex min-w-0 items-center gap-2">
+                  <FlatBalloon color={SET_COLORS[i % SET_COLORS.length]![0]} shade={SET_COLORS[i % SET_COLORS.length]![1]} className="w-4 shrink-0" />
+                  <span className="truncate font-display">{c.name}</span>
+                </span>
                 <span className={`text-sm ${c.id === selectedId ? 'text-white/80' : 'text-ink-soft'}`}>{c.wordCount}</span>
               </button>
             </li>
@@ -138,7 +142,7 @@ export function LibraryScreen() {
           <div className="flex flex-col gap-2 text-sm text-ink-soft">
             No collections yet.
             <Button size="sm" icon={<Sparkles size={16} />} onClick={() => void addSampleCollection().then(setSelectedId)}>
-              Add demo words
+              Add the Basic set
             </Button>
           </div>
         )}
@@ -148,11 +152,19 @@ export function LibraryScreen() {
         {!selected ? (
           <EmptyState icon={<BookOpen size={48} />} title="Create your first collection">
             Collections group your vocabulary, e.g. “IELTS Topic: Environment”.
+            <div className="mt-4">
+              <Button variant="sun" icon={<Upload size={18} />} onClick={() => setImporting(true)}>
+                Import words
+              </Button>
+            </div>
           </EmptyState>
         ) : (
           <div className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h1 className="min-w-0 truncate text-2xl font-bold">{selected.name}</h1>
+              <h1 className="min-w-0 truncate text-3xl font-bold">
+                {selected.name}
+                <span className="ml-2 align-middle text-base font-semibold text-ink-soft">{selected.wordCount} words</span>
+              </h1>
               <div className="flex flex-wrap gap-2">
                 <Button
                   size="sm"
@@ -160,7 +172,7 @@ export function LibraryScreen() {
                   icon={<Play size={16} />}
                   disabled={!data?.words.length}
                   onClick={() => {
-                    updateSetup({ collectionId: selected.id });
+                    updateSetup({ collectionIds: [selected.id] });
                     navigate('home');
                   }}
                 >
@@ -180,13 +192,10 @@ export function LibraryScreen() {
                 Add word
               </Button>
               <Button variant="sun" icon={<Upload size={18} />} onClick={() => setImporting(true)}>
-                Import Excel / CSV
+                Import words
               </Button>
               <Button icon={<Download size={18} />} disabled={!data?.words.length} onClick={() => data && exportCsv(data.words, `${selected.name}.csv`)}>
                 Export CSV
-              </Button>
-              <Button variant="ghost" icon={<FileDown size={18} />} onClick={() => void downloadTemplate()}>
-                Template
               </Button>
             </div>
 
@@ -232,12 +241,12 @@ export function LibraryScreen() {
                   {filtered.slice(0, limit).map((w) => {
                     const st = statusOf(data?.progress.get(w.id), now);
                     return (
-                      <li key={w.id} className="flex items-center gap-3 rounded-2xl bg-white px-3 py-2">
+                      <li key={w.id} className="tile flex items-center gap-3 rounded-xl bg-surface px-3 py-2 transition hover:border-line/40">
                         <button
                           type="button"
                           aria-label={`Pronounce ${w.english}`}
                           onClick={() => speech.speak(w.english, { rate: speechRate })}
-                          className="rounded-full bg-candy-mint/30 p-2 hover:bg-candy-mint/60"
+                          className="rounded-full border-2 border-line bg-candy-mint p-1.5 transition hover:-rotate-12"
                         >
                           <Volume2 size={16} />
                         </button>
@@ -275,8 +284,17 @@ export function LibraryScreen() {
       {editing && selectedId && (
         <WordFormModal collectionId={selectedId} word={editing === 'new' ? undefined : editing} onClose={() => setEditing(null)} />
       )}
-      {importing && selectedId && data && (
-        <ImportDialog collectionId={selectedId} existing={data.words} onClose={() => setImporting(false)} />
+      {importing && (
+        <ImportDialog
+          collectionId={selectedId ?? ''}
+          collectionName={selected?.name ?? ''}
+          existing={data?.words ?? []}
+          onImported={(id) => {
+            setSelectedId(id);
+            updateSetup({ collectionIds: [id] });
+          }}
+          onClose={() => setImporting(false)}
+        />
       )}
       {naming && (
         <Modal title={naming.mode === 'create' ? 'New collection' : 'Rename collection'} onClose={() => setNaming(null)}>

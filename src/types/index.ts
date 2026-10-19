@@ -46,16 +46,57 @@ export type SessionStyle = 'endless' | 'practice';
 /** Number of target words in a practice session; 'all' = whole collection. */
 export type PracticeSize = 10 | 20 | 30 | 'all';
 
+export type StageMode = 'random' | 'levels';
+export type BossId = 'cloud' | 'crab' | 'ghost' | 'dragon' | 'robot';
+export type StageId =
+  | 'meadow'
+  | 'garden'
+  | 'sunset'
+  | 'autumn'
+  | 'snow'
+  | 'desert'
+  | 'candy'
+  | 'jungle'
+  | 'ocean'
+  | 'city'
+  | 'night'
+  | 'volcano'
+  | 'space'
+  | 'aurora';
+
 export interface SessionConfig {
+  /** Primary collection (first selected); kept for history records. */
   collectionId: string;
+  /** Every collection practised together; defaults to just `collectionId`. */
+  collectionIds?: string[];
+  /** Display name; joined names when several sets are mixed. */
   collectionName: string;
   mode: GameMode;
   difficulty: Difficulty;
   style: SessionStyle;
   practiceSize: PracticeSize;
+  /** Backdrop for the play field (visual only); missing = Sunny Meadow. In level mode, the first level's stage. */
+  stage?: StageId;
+  /** 'levels' moves to the next stage every few correct answers. */
+  stageMode?: StageMode;
+  /** Set for a boss battle instead of falling balloons. */
+  boss?: BossId;
+  /** Stages the journey travels through (the player's unlocked ones), in order. */
+  stagePath?: StageId[];
   /** Restrict to these words (used by "Review mistakes" on the results screen). */
   wordIds?: string[];
   seed?: number;
+  /** Set when the game is one step of an adventure (copy typing → recall → boss). */
+  adventure?: AdventureInfo;
+}
+
+export interface AdventureInfo {
+  /** Same for every step of one adventure. */
+  id: string;
+  /** 0 = copy typing, 1 = Vietnamese → English, 2 = boss fight. */
+  step: 0 | 1 | 2;
+  /** The boss waiting at the end. */
+  boss: BossId;
 }
 
 export type SessionStatus = 'completed' | 'game_over' | 'quit' | 'interrupted' | 'in_progress';
@@ -93,12 +134,40 @@ export interface SessionRecord {
   /** Sum of response times of correct answers (for typing speed). */
   correctResponseMs: number;
   mistakes: SessionMistake[];
+  /** The boss fought, for boss battles ('completed' = defeated it). */
+  boss?: BossId;
 }
 
 export type RecallAnnounce = 'vietnamese' | 'english' | 'off';
 
+export type CannonSkinId =
+  | 'classic'
+  | 'mint'
+  | 'sunny'
+  | 'berry'
+  | 'midnight'
+  | 'robot'
+  | 'bunny'
+  | 'panda'
+  | 'dino'
+  | 'shark'
+  | 'royal'
+  | 'ninja'
+  | 'lava'
+  | 'angel'
+  | 'sakura'
+  | 'sunflower'
+  | 'rose'
+  | 'lotus'
+  | 'tulip';
+
 export interface AppSettings {
+  /** Colour theme; 'system' follows the device. */
+  theme: 'dark' | 'light' | 'system';
   soundEnabled: boolean;
+  /** Background music (synthesized, one tune per stage). */
+  musicEnabled: boolean;
+  musicVolume: number;
   sfxVolume: number;
   speechEnabled: boolean;
   speechRate: number;
@@ -111,6 +180,17 @@ export interface AppSettings {
   reducedMotion: boolean;
   copyModeHighlight: boolean;
   recallModeHighlight: boolean;
+  /** Optional DeepSeek API key for AI word-list help; stored only on this device. */
+  deepseekApiKey: string;
+  cannonSkin: CannonSkinId;
+  /** Skins bought with reward coins (free starter skins are always owned). */
+  ownedSkins: CannonSkinId[];
+  /** Reward coins spent in the skin shop (balance = coins earned from games − this). */
+  coinsSpent: number;
+  /** Achievement ids the player has already been shown (so new ones can be celebrated once). */
+  achievementsSeen: string[];
+  /** Bosses beaten at least once (each unlocks the next). */
+  bossesDefeated: BossId[];
 }
 
 export interface Rng {

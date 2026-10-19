@@ -38,6 +38,10 @@ export default defineConfig(({ mode }) => {
       outDir: isFb ? 'dist-fb' : 'dist',
       chunkSizeWarningLimit: 1600,
     },
+    // Account API: run `npm run dev:api` (wrangler dev) alongside `npm run dev`.
+    server: {
+      proxy: { '/api': 'http://localhost:8787' },
+    },
     test: {
       environment: 'node',
       include: ['tests/unit/**/*.test.ts'],

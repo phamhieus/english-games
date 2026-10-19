@@ -125,6 +125,11 @@ export class GameSession {
     return this.state;
   }
 
+  /** Words picked for a practice session (empty for endless sessions). */
+  get targetIds(): string[] {
+    return [...this.targets.keys()];
+  }
+
   get isRunning(): boolean {
     return this.state === 'running';
   }
@@ -306,6 +311,13 @@ export class GameSession {
     if (this.isRunning) this.state = 'quit';
   }
 
+  /** Boss battles end by winning, not by finishing a word list. */
+  win(bonusPoints = 0): void {
+    if (!this.isRunning) return;
+    this.scoring.bonus(bonusPoints);
+    this.state = 'completed';
+  }
+
   mistakes(): SessionMistake[] {
     const out: SessionMistake[] = [];
     for (const [id, t] of this.tally) {
@@ -347,6 +359,7 @@ export class GameSession {
       correctChars: this.correctChars,
       correctResponseMs: Math.round(this.correctResponseMs),
       mistakes: this.mistakes(),
+      ...(this.config.boss ? { boss: this.config.boss } : {}),
     };
   }
 }

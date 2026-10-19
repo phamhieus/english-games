@@ -1,0 +1,9 @@
+# Local development only. Copy to .dev.vars (git-ignored) and fill in.
+# Lets you sign in as a test user at /api/auth/dev/start without Google/Facebook.
+DEV_LOGIN=1
+# Where the app runs in dev (the Vite server proxies /api to wrangler dev).
+APP_ORIGIN=http://localhost:5173
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+FACEBOOK_APP_ID=
+FACEBOOK_APP_SECRET=

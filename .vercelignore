@@ -1,0 +1,9 @@
+.deploy.env
+.dev.vars
+.wrangler
+.claude
+node_modules
+dist
+test-results
+playwright-report
+*.tsbuildinfo

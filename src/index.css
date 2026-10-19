@@ -1,23 +1,45 @@
 @import 'tailwindcss';
 
 @theme {
-  --font-sans: 'Fredoka', 'Nunito', ui-rounded, system-ui, sans-serif;
-  --color-ink: #2d2a4a;
-  --color-ink-soft: #6b6890;
-  --color-sky: #bfe3ff;
-  --color-cream: #fffaf3;
-  --color-candy-pink: #ff8fbf;
-  --color-candy-pink-dark: #e2639c;
-  --color-candy-purple: #9d8cf0;
-  --color-candy-purple-dark: #7b6ad8;
-  --color-candy-mint: #6fd9c8;
-  --color-candy-mint-dark: #3fb8a5;
-  --color-candy-sun: #ffd166;
-  --color-candy-sun-dark: #eeb33c;
-  --color-candy-red: #ff7a93;
+  /* Nunito for reading, Fredoka for headings, buttons and numbers. */
+  --font-sans: 'Nunito', ui-rounded, system-ui, sans-serif;
+  --font-display: 'Fredoka', 'Nunito', ui-rounded, system-ui, sans-serif;
+  /* Text */
+  --color-ink: #1f2a44;
+  --color-ink-soft: #4a5578;
+  /* Outlines and hard shadows (dark in both themes) */
+  --color-line: #1f2a44;
+  /* Panels: cards and the controls inside them */
+  --color-card: #fffdf8;
+  --color-surface: #ffffff;
+  --color-sky: #cdeaf7;
+  --color-cream: #fff6e5;
+  --color-candy-pink: #d6402e;
+  --color-candy-pink-dark: #a52e20;
+  --color-candy-purple: #5b54d6;
+  --color-candy-purple-dark: #3f39a8;
+  --color-candy-mint: #4cc9a7;
+  --color-candy-mint-dark: #1f8f73;
+  --color-candy-sun: #ffc43d;
+  --color-candy-sun-dark: #d99a0b;
+  --color-candy-red: #e8506a;
+  /* The logo's red, a touch brighter for big outlined titles on purple. */
+  --color-brand: #ff5d4a;
+  --color-candy-blue: #7cc4f5;
+  --color-candy-orange: #ff9f43;
+  /* Soft tints for icon badges and tiles */
+  --color-tint-purple: #e9e7ff;
+  --color-tint-blue: #e1f2ff;
+  --color-tint-mint: #dcf7ef;
+  --color-tint-sun: #fff1cc;
+  --color-tint-coral: #ffe3dc;
+  --color-tint-pink: #ffe4ee;
   --animate-shake: shake 0.32s ease-in-out;
   --animate-pop-in: pop-in 0.28s ease-out;
   --animate-float: float 6s ease-in-out infinite;
+  --animate-bob: bob 3.2s ease-in-out infinite;
+  --animate-drift: drift 26s linear infinite;
+  --animate-wiggle: wiggle 2.8s ease-in-out infinite;
 
   @keyframes shake {
     0%, 100% { transform: translateX(0); }
@@ -34,6 +56,81 @@
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-10px); }
   }
+  @keyframes bob {
+    0%, 100% { transform: translateY(0) rotate(-2deg); }
+    50% { transform: translateY(-8px) rotate(2deg); }
+  }
+  /* Background balloons rise from below the fold and leave at the top. */
+  @keyframes drift {
+    from { transform: translateY(110vh); }
+    to { transform: translateY(-30vh); }
+  }
+  @keyframes wiggle {
+    0%, 80%, 100% { transform: rotate(0); }
+    85% { transform: rotate(-8deg); }
+    90% { transform: rotate(6deg); }
+    95% { transform: rotate(-3deg); }
+  }
+}
+
+/* ── Dark theme: soft navy surfaces, light text, dark outlines ───────────── */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-ink: #e6eaf6;
+  --color-ink-soft: #a7b0cc;
+  --color-line: #0a0e1c;
+  --color-card: #1d2540;
+  --color-surface: #283152;
+  --color-cream: #222b48;
+  --color-sky: #121829;
+  --color-candy-purple: #5149c4;
+  --color-tint-purple: #2e2b5c;
+  --color-tint-blue: #1d3554;
+  --color-tint-mint: #173c36;
+  --color-tint-sun: #3d331a;
+  --color-tint-coral: #47262a;
+  --color-tint-pink: #45263a;
+  /* menu scenery */
+  --scene-sun: #f3e3a2;
+  --scene-sun-glow: #f3e3a2;
+  --scene-cloud: #283152;
+  --scene-hill-1: #1f3a46;
+  --scene-hill-2: #193a37;
+  --scene-hill-3: #14302c;
+  /* charts */
+  --chart-grid: rgb(230 234 246 / 0.12);
+  --chart-series: #8f88ff;
+  --scene-balloon-opacity: 0.55;
+}
+
+:root {
+  --scene-sun: #ffc43d;
+  --scene-sun-glow: #ffc43d;
+  --scene-cloud: #ffffff;
+  --scene-hill-1: #9fdcc4;
+  --scene-hill-2: #4cc9a7;
+  --scene-hill-3: #2fa588;
+  --chart-grid: rgb(31 42 68 / 0.12);
+  --chart-series: #5b54d6;
+}
+
+/* Bright fills keep dark text in the dark theme too (yellow, mint, blue, pink, lilac buttons and badges). */
+:root[data-theme='dark']
+  :is(.bg-candy-sun, .bg-candy-mint, .bg-candy-blue, [class*='bg-[#ff7fb8]'], [class*='bg-[#ff9fc8]'], [class*='bg-[#b7a4f7]'], [class*='bg-[#ff8a7a]'], .on-light) {
+  color: var(--color-line);
+}
+:root[data-theme='dark'] :is(.bg-candy-sun, .bg-candy-mint, .bg-candy-blue, .on-light) .text-ink-soft {
+  color: rgb(10 14 28 / 0.7);
+}
+/* Dark accent text needs to be lighter on dark panels. */
+:root[data-theme='dark'] .text-candy-purple-dark {
+  color: #b9b3ff;
+}
+:root[data-theme='dark'] .text-candy-pink-dark {
+  color: #ff9d8f;
+}
+:root[data-theme='dark'] .text-candy-mint-dark {
+  color: #6fe0c8;
 }
 
 :root {
@@ -49,59 +146,166 @@ body,
   height: 100%;
 }
 
+html,
+body {
+  overflow: hidden;
+}
+
+/* The app frame: exactly the visible area (above the mobile keyboard when it is open). */
+.app-root {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: var(--app-top, 0px);
+  height: var(--app-height, 100dvh);
+}
+
 body {
   margin: 0;
-  background: linear-gradient(180deg, #bfe3ff 0%, #dcefff 45%, #fde4f2 100%) fixed;
+  background: var(--color-sky);
   color: var(--color-ink);
   overscroll-behavior: none;
 }
 
-/* Fluffy background clouds */
-.cloud {
-  position: absolute;
-  background: #fff;
-  border-radius: 999px;
-  opacity: 0.75;
-  filter: blur(0.3px);
-}
-.cloud::before,
-.cloud::after {
-  content: '';
-  position: absolute;
-  background: #fff;
-  border-radius: 999px;
-}
-.cloud::before {
-  width: 55%;
-  height: 160%;
-  left: 15%;
-  bottom: 20%;
-}
-.cloud::after {
-  width: 40%;
-  height: 120%;
-  right: 12%;
-  bottom: 25%;
+h1,
+h2,
+h3,
+button,
+.font-display {
+  font-family: var(--font-display);
 }
 
-/* "Candy" 3D buttons */
+/* Flat illustrated scenery (see Clouds.tsx) */
+.scenery {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* In a layer so utilities (bg-*, border-*) can override them. */
+@layer components {
+/* Flat buttons: bold outline + hard offset shadow */
 .btn-candy {
-  box-shadow: 0 4px 0 var(--shadow, rgba(45, 42, 74, 0.18));
-  transition: transform 0.08s ease, box-shadow 0.08s ease, filter 0.15s ease;
+  border: 2px solid var(--color-line);
+  box-shadow: 0 3px 0 var(--color-line);
+  transition: transform 0.1s ease, box-shadow 0.1s ease, filter 0.15s ease;
 }
 .btn-candy:hover:not(:disabled) {
-  filter: brightness(1.04);
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 0 var(--color-line);
 }
 .btn-candy:active:not(:disabled) {
   transform: translateY(3px);
-  box-shadow: 0 1px 0 var(--shadow, rgba(45, 42, 74, 0.18));
+  box-shadow: 0 0 0 var(--color-line);
 }
 
 .card {
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(6px);
-  border: 2px solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 10px 30px -12px rgba(93, 80, 160, 0.35);
+  background: var(--color-card);
+  border: 2px solid var(--color-line);
+  box-shadow: 0 4px 0 var(--color-line);
+}
+
+/* Static item inside a card: a quiet outline so outlines don't stack up. */
+.tile {
+  border: 2px solid color-mix(in srgb, var(--color-line) 14%, transparent);
+}
+
+/* Selectable card (mode, word set, skin): lifts on hover, hard shadow when chosen. */
+.pick {
+  border: 2px solid var(--color-line);
+  box-shadow: 0 3px 0 var(--color-line);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease;
+}
+.pick:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 0 var(--color-line);
+}
+.pick:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--color-line);
+}
+}
+
+/* Big game-title lettering: white fill, ink outline, hard drop shadow. */
+.title-3d {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: 0.01em;
+  -webkit-text-stroke: 7px var(--color-line);
+  paint-order: stroke fill;
+  text-shadow: 0 5px 0 var(--color-line);
+}
+
+@keyframes recoil {
+  0% { transform: translateY(0); }
+  35% { transform: translateY(8px) scaleY(0.94); }
+  100% { transform: translateY(0); }
+}
+@keyframes pulse-soft {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+/* Stage ambience (StageBackdrop.tsx) */
+@keyframes fall {
+  from { transform: translate3d(0, -10vh, 0) rotate(0deg); }
+  to { transform: translate3d(var(--drift, 30px), 110vh, 0) rotate(300deg); }
+}
+@keyframes rise {
+  from { transform: translateY(110vh); }
+  to { transform: translateY(-10vh); }
+}
+@keyframes twinkle {
+  0%, 100% { opacity: 0.25; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+@keyframes fly {
+  from { transform: translateX(-15vw); }
+  to { transform: translateX(115vw); }
+}
+@keyframes sway {
+  0%, 100% { transform: rotate(-4deg); }
+  50% { transform: rotate(4deg); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes level-pop {
+  0% { transform: scale(0.4); opacity: 0; }
+  12% { transform: scale(1.08); opacity: 1; }
+  20% { transform: scale(1); }
+  82% { transform: scale(1); opacity: 1; }
+  100% { transform: translateY(-24px) scale(0.96); opacity: 0; }
+}
+/* Skin shop test fire (FireFx.tsx) */
+@keyframes fx-burst {
+  0% { transform: translate(-50%, -50%) scale(0.5) rotate(0deg); opacity: 1; }
+  70% { opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1) rotate(var(--rot)); opacity: 0; }
+}
+@keyframes fx-shot {
+  0% { transform: translate(-50%, -50%) rotate(0deg) scale(0.7); opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translate(-50%, calc(-50% + var(--fly))) rotate(var(--spin, 0deg)) scale(1.1); opacity: 0; }
+}
+@keyframes fx-flash {
+  from { transform: translate(-50%, -50%) scale(0.2); opacity: 0.95; }
+  to { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
+}
+@keyframes fx-ghost {
+  0% { opacity: 0; }
+  10% { opacity: 0.55; }
+  100% { transform: translate(-50%, calc(-50% + var(--fly))) scale(0.5); opacity: 0; }
+}
+@keyframes aurora {
+  0%, 100% { opacity: 0.65; transform: translateX(-20px); }
+  50% { opacity: 1; transform: translateX(20px); }
+}
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
 }
 
 :focus-visible {
