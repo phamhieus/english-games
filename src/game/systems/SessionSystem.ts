@@ -125,6 +125,11 @@ export class GameSession {
     return this.state;
   }
 
+  /** Words picked for a practice session (empty for endless sessions). */
+  get targetIds(): string[] {
+    return [...this.targets.keys()];
+  }
+
   get isRunning(): boolean {
     return this.state === 'running';
   }

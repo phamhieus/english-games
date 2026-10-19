@@ -15,6 +15,7 @@ import { SettingsScreen } from '@/components/common/SettingsScreen';
 import { SkinsScreen } from '@/components/skins/SkinsScreen';
 import { ProfileScreen } from '@/components/account/ProfileScreen';
 import { BossSelectScreen } from '@/components/game/BossSelectScreen';
+import { StageClearScreen } from '@/components/game/StageClearScreen';
 import { useAccountStore } from '@/stores/accountStore';
 import { Clouds } from '@/components/common/Clouds';
 import { FlatBalloon, Logo, Wordmark } from '@/components/common/Art';
@@ -191,7 +192,7 @@ export function App() {
           aria-label="Main"
         >
           {NAV.map(({ screen: s, label, icon: Icon, color }) => {
-            const active = screen === s || (s === 'home' && (screen === 'results' || screen === 'bosses'));
+            const active = screen === s || (s === 'home' && (screen === 'results' || screen === 'bosses' || screen === 'stage-clear'));
             return (
               <button
                 key={s}
@@ -231,6 +232,7 @@ export function App() {
           {screen === 'settings' && <SettingsScreen />}
           {screen === 'profile' && <ProfileScreen />}
           {screen === 'bosses' && <BossSelectScreen />}
+          {screen === 'stage-clear' && <StageClearScreen />}
         </div>
       </main>
       {askSignIn && <SignInMenu onGuest={playAsGuest} />}

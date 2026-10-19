@@ -29,11 +29,14 @@ export interface BossDef {
   bullet: { fill: number; glow: number };
   /** Short description of how it fights, for the picker. */
   attack: string;
+  /** Player level needed to meet it at the end of an adventure. */
+  minLevel: number;
 }
 
 export const BOSSES: readonly BossDef[] = [
   {
     id: 'cloud',
+    minLevel: 1,
     name: 'Grumpy Cloud',
     tagline: 'Rains words on sunny days.',
     stage: 'meadow',
@@ -50,6 +53,7 @@ export const BOSSES: readonly BossDef[] = [
   },
   {
     id: 'crab',
+    minLevel: 3,
     name: 'Bubble Crab',
     tagline: 'Snaps, then blows bubbles.',
     stage: 'ocean',
@@ -66,6 +70,7 @@ export const BOSSES: readonly BossDef[] = [
   },
   {
     id: 'ghost',
+    minLevel: 5,
     name: 'Phantom',
     tagline: 'Whispers words in the dark.',
     stage: 'night',
@@ -82,6 +87,7 @@ export const BOSSES: readonly BossDef[] = [
   },
   {
     id: 'dragon',
+    minLevel: 8,
     name: 'Lava Dragon',
     tagline: 'Breathes fire, and vocabulary.',
     stage: 'volcano',
@@ -98,6 +104,7 @@ export const BOSSES: readonly BossDef[] = [
   },
   {
     id: 'robot',
+    minLevel: 12,
     name: 'Robo Overlord',
     tagline: 'Final boss. Loads words at light speed.',
     stage: 'space',
@@ -116,11 +123,16 @@ export const BOSSES: readonly BossDef[] = [
 
 export const bossById = (id: BossId | undefined): BossDef => BOSSES.find((b) => b.id === id) ?? BOSSES[0]!;
 
-/** A boss is open once the one before it has been beaten. */
-export const isBossUnlocked = (id: BossId, defeated: readonly BossId[]): boolean => {
-  const i = BOSSES.findIndex((b) => b.id === id);
-  return i <= 0 || defeated.includes(BOSSES[i - 1]!.id);
-};
+/**
+ * The boss at the end of an adventure: the next one not beaten yet, once the player's level
+ * is high enough; until then a rematch with the strongest boss the level allows.
+ */
+export function adventureBoss(level: number, defeated: readonly BossId[]): BossDef {
+  const next = BOSSES.find((b) => !defeated.includes(b.id));
+  if (next && next.minLevel <= level) return next;
+  const allowed = BOSSES.filter((b) => b.minLevel <= level);
+  return allowed[allowed.length - 1] ?? BOSSES[0]!;
+}
 
 // Artwork lives in bossArt.ts.
 export { BOSS_BOX, bossSvg } from './bossArt';

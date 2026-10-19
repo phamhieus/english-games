@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BOSSES, bossById, bossSvg, isBossUnlocked } from '@/game/config/bosses';
+import { BOSSES, adventureBoss, bossById, bossSvg } from '@/game/config/bosses';
 import { BossBattle, WORD_SWAP_MS } from '@/game/systems/BossSystem';
 import { GameSession } from '@/game/systems/SessionSystem';
 import { createRng } from '@/utils/random';
@@ -46,10 +46,14 @@ describe('boss battle rules', () => {
     expect(b.shouldSwapWord()).toBe(false);
   });
 
-  it('unlocks bosses one after another and draws all of them', () => {
-    expect(isBossUnlocked('cloud', [])).toBe(true);
-    expect(isBossUnlocked('crab', [])).toBe(false);
-    expect(isBossUnlocked('crab', ['cloud'])).toBe(true);
+  it('adventures meet the bosses in order, once the level allows, and all of them draw', () => {
+    expect(adventureBoss(1, []).id).toBe('cloud');
+    // Next boss needs level 3: rematch the strongest one the level allows until then.
+    expect(adventureBoss(2, ['cloud']).id).toBe('cloud');
+    expect(adventureBoss(3, ['cloud']).id).toBe('crab');
+    // A high level does not skip a boss that was never beaten.
+    expect(adventureBoss(20, ['cloud']).id).toBe('crab');
+    expect(adventureBoss(20, BOSSES.map((b) => b.id)).id).toBe('robot');
     for (const def of BOSSES) {
       for (const angry of [false, true]) expect(bossSvg(def.id, angry)).not.toMatch(/undefined|NaN/);
     }
