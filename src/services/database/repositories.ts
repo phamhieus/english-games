@@ -86,6 +86,13 @@ export async function deleteWords(ids: string[]): Promise<void> {
   });
 }
 
+/** Switches words on or off for practice (switched-off words stay in the set but are never played). */
+export async function setWordsExcluded(ids: readonly string[], excluded: boolean): Promise<void> {
+  if (ids.length === 0) return;
+  const now = Date.now();
+  await getDb().vocabulary.where(':id').anyOf([...ids]).modify({ excluded, updatedAt: now });
+}
+
 /** Finds an existing word in a collection with the same normalized English. */
 export async function findDuplicate(collectionId: string, english: string, exceptId?: string): Promise<VocabularyItem | undefined> {
   const key = normalizeAnswer(english);

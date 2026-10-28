@@ -45,6 +45,26 @@ export function mistakePool(words: readonly VocabularyItem[], progress: Progress
   return words.filter((w) => mistakeWeight(progress.get(w.id)) > 0);
 }
 
+/** Games a word sits out after being practised (when the set has enough other words). */
+export const REST_GAMES = 4;
+/** Weight factor for a resting word in an endless game (rare, but not banned). */
+export const RESTING_WEIGHT = 0.1;
+
+/**
+ * The words practised most recently, which should sit out the next few games so every game
+ * brings different words: up to `count × REST_GAMES` of them, always leaving `count` to play
+ * (a small set just cycles through all its words).
+ */
+export function restingWords(words: readonly VocabularyItem[], progress: ProgressMap, count: number, games = REST_GAMES): Set<string> {
+  const spare = words.length - count;
+  if (spare <= 0) return new Set();
+  const practised = words
+    .map((w) => ({ id: w.id, at: progress.get(w.id)?.lastPracticedAt ?? 0 }))
+    .filter((w) => w.at > 0)
+    .sort((a, b) => b.at - a.at);
+  return new Set(practised.slice(0, Math.min(spare, count * games)).map((w) => w.id));
+}
+
 /**
  * Picks `count` distinct words using weighted random sampling without replacement.
  * Deterministic for a seeded `rng`.

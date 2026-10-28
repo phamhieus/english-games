@@ -120,7 +120,7 @@ export function HomeScreen() {
   const stats = useMemo(() => {
     if (!data) return null;
     const now = Date.now();
-    const words = data.words;
+    const words = data.words.filter((w) => !w.excluded);
     return {
       total: words.length,
       fresh: words.filter((w) => !data.progress.get(w.id)?.attempts).length,
@@ -179,7 +179,11 @@ export function HomeScreen() {
   };
 
   const notice = poolEmpty ? (
-    !adventure && setup.mode === 'mistakes' ? 'No mistakes to review yet. Play another mode first!' : 'These sets are empty. Add some words first.'
+    !adventure && setup.mode === 'mistakes'
+      ? 'No mistakes to review yet. Play another mode first!'
+      : data?.words.length
+        ? 'Every word here is switched off. Turn some on in the Library.'
+        : 'These sets are empty. Add some words first.'
   ) : selected.length === 0 ? (
     'Pick at least one word set.'
   ) : allMastered ? (

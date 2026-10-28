@@ -9,7 +9,7 @@ import type {
   WordProgress,
 } from '@/types';
 import { GAMEPLAY } from '@/game/config/gameConfig';
-import { mistakePool, mistakeWeight, pickNext, selectTargets } from '@/features/learning/selection';
+import { mistakePool, mistakeWeight, pickNext, RESTING_WEIGHT, restingWords, selectTargets, wordWeight } from '@/features/learning/selection';
 import {
   applyCorrect,
   applyIncorrect,
@@ -54,12 +54,14 @@ export function sessionPool(
   words: readonly VocabularyItem[],
   progress: ReadonlyMap<string, WordProgress>,
 ): VocabularyItem[] {
+  // Words the player switched off are never played.
+  const on = words.filter((w) => !w.excluded);
   if (config.wordIds?.length) {
     const ids = new Set(config.wordIds);
-    return words.filter((w) => ids.has(w.id));
+    return on.filter((w) => ids.has(w.id));
   }
-  if (config.mode === 'mistakes') return mistakePool(words, progress);
-  return [...words];
+  if (config.mode === 'mistakes') return mistakePool(on, progress);
+  return on;
 }
 
 /**
@@ -92,6 +94,8 @@ export class GameSession {
   private replay: { id: string; afterSpawn: number }[] = [];
   private readonly recent: string[] = [];
   private readonly boost = new Map<string, number>();
+  /** Words from the last few games, kept out of this one so each game brings new words. */
+  private readonly resting: ReadonlySet<string>;
   private readonly tally = new Map<string, WordTally>();
   private spawnCount = 0;
   private activeMs = 0;
@@ -109,10 +113,15 @@ export class GameSession {
     this.words = sessionPool(opts.config, opts.words, this.progress);
     for (const w of this.words) this.wordById.set(w.id, w);
 
+    const size = this.config.practiceSize === 'all' ? this.words.length : this.config.practiceSize;
+    // Mistake review and a fixed word list (adventure steps, "review mistakes") replay words on purpose.
+    const varied = this.config.mode !== 'mistakes' && !this.config.wordIds?.length;
+    this.resting = varied ? restingWords(this.words, this.progress, Math.min(size, this.words.length)) : new Set();
+
     if (this.config.style === 'practice') {
-      const size = this.config.practiceSize === 'all' ? this.words.length : this.config.practiceSize;
       const weightFn = this.config.mode === 'mistakes' ? mistakeWeight : undefined;
-      const picked = selectTargets(this.words, this.progress, size, this.rng, this.startedAt, weightFn);
+      const candidates = this.words.filter((w) => !this.resting.has(w.id));
+      const picked = selectTargets(candidates, this.progress, size, this.rng, this.startedAt, weightFn);
       for (const w of picked) {
         this.targets.set(w.id, { word: w, appearances: 0, resolved: false, correct: false });
         this.pending.push(w.id);
@@ -173,12 +182,13 @@ export class GameSession {
     if (this.config.style === 'practice') {
       word = this.nextPracticeWord(active);
     } else {
-      const weightFn = this.config.mode === 'mistakes' ? mistakeWeight : undefined;
+      const base = this.config.mode === 'mistakes' ? (p: WordProgress | undefined) => Math.max(0.3, mistakeWeight(p)) : wordWeight;
       word = pickNext(this.words, this.progress, this.rng, this.now(), {
         exclude: active,
         recent: this.recent,
         boost: this.boost,
-        weightFn: weightFn ? (p) => Math.max(0.3, weightFn(p)) : undefined,
+        // Words from the last few games come back only rarely.
+        weightFn: (p, now) => base(p, now) * (p && this.resting.has(p.vocabularyId) ? RESTING_WEIGHT : 1),
       });
     }
     if (word) this.noteSpawn(word.id);

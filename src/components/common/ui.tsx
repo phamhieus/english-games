@@ -101,6 +101,25 @@ export function Toggle({
   );
 }
 
+/** A small on/off switch without a visible label (give it `label` for screen readers). */
+export function Switch({ checked, onChange, label, className = '' }: { checked: boolean; onChange: (v: boolean) => void; label: string; className?: string }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      title={label}
+      onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-6 w-10 shrink-0 items-center rounded-full border-2 border-line transition focus-visible:outline-3 focus-visible:outline-candy-purple ${
+        checked ? 'bg-candy-mint' : 'bg-surface'
+      } ${className}`}
+    >
+      <span className={`absolute left-0.5 h-4 w-4 rounded-full border-2 border-line bg-surface transition ${checked ? 'translate-x-4' : ''}`} />
+    </button>
+  );
+}
+
 export function Modal({
   title,
   onClose,

@@ -96,7 +96,7 @@ export default function GameScreen() {
       .then((l) => {
         if (cancelled) return;
         if (l.bridge.session.poolSize === 0) {
-          setError(config.mode === 'mistakes' ? 'There are no mistakes to review in this collection.' : 'This collection has no words.');
+          setError(config.mode === 'mistakes' ? 'There are no mistakes to review in this collection.' : 'No words to practise here. Add some, or switch some on in the Library.');
           return;
         }
         setHud(l.bridge.hud());

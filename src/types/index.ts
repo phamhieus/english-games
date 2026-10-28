@@ -19,6 +19,8 @@ export interface VocabularyItem {
   partOfSpeech?: string;
   level?: CefrLevel;
   tags?: string[];
+  /** Switched off by the player: kept in the set but left out of every game. */
+  excluded?: boolean;
   createdAt: number;
   updatedAt: number;
 }
