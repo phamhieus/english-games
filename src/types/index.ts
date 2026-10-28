@@ -180,6 +180,8 @@ export interface AppSettings {
   reducedMotion: boolean;
   copyModeHighlight: boolean;
   recallModeHighlight: boolean;
+  /** In-game keyboard instead of the device's: 'auto' = on touch screens. */
+  screenKeyboard: 'auto' | 'on' | 'off';
   /** Optional DeepSeek API key for AI word-list help; stored only on this device. */
   deepseekApiKey: string;
   cannonSkin: CannonSkinId;

@@ -19,6 +19,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   reducedMotion: false,
   copyModeHighlight: true,
   recallModeHighlight: false,
+  screenKeyboard: 'auto',
   deepseekApiKey: '',
   cannonSkin: 'classic',
   ownedSkins: [],

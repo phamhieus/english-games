@@ -213,6 +213,20 @@ export function SettingsScreen() {
           checked={settings.recallModeHighlight}
           onChange={(recallModeHighlight) => update({ recallModeHighlight })}
         />
+        <div className="py-2">
+          <div className="mb-1 font-semibold">Keyboard while playing</div>
+          <p className="mb-2 text-sm text-ink-soft">The game’s own keyboard is smaller than a phone’s, so you can see more of the balloons.</p>
+          <Segmented<AppSettings['screenKeyboard']>
+            label="Keyboard while playing"
+            value={settings.screenKeyboard}
+            onChange={(screenKeyboard) => update({ screenKeyboard })}
+            options={[
+              { value: 'auto', label: 'Auto', hint: 'Game keyboard on phones and tablets' },
+              { value: 'on', label: 'Game keyboard' },
+              { value: 'off', label: 'Device keyboard' },
+            ]}
+          />
+        </div>
         <Toggle label="Animations" description="Explosions, particles and wobbly balloons." checked={settings.animations} onChange={(animations) => update({ animations })} />
         <Toggle label="Reduced motion" description="Minimise movement and effects." checked={settings.reducedMotion} onChange={(reducedMotion) => update({ reducedMotion })} />
       </Card>

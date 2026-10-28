@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import type { StageDef } from '@/game/config/stages';
 import { useDarkTheme } from '@/hooks/useDarkTheme';
+import { isTouchDevice } from '@/hooks/useScreenKeyboard';
 
 /**
  * Flat illustrated scenery for each stage, drawn behind the transparent Phaser canvas.
@@ -735,6 +736,8 @@ export function StageBackdrop({ stage, mini = false }: { stage: StageDef; mini?:
   // In the dark theme the daytime stages turn into their night versions.
   const night = useDarkTheme() ? NIGHT[stage.id] : undefined;
   const filterId = `night-${stage.id}`;
+  // Phones: the drifting CSS particles are dozens of extra layers composited under the game canvas every frame.
+  const ambient = !mini && !isTouchDevice();
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden" style={{ background: night?.sky ?? stage.sky }}>
       <svg className="absolute inset-0 h-full w-full" viewBox="0 0 1200 800" preserveAspectRatio={mini ? 'xMidYMid slice' : 'xMidYMax slice'}>
@@ -750,8 +753,8 @@ export function StageBackdrop({ stage, mini = false }: { stage: StageDef; mini?:
         {night && <Moon x={night.moon[0]} y={night.moon[1]} />}
         <g filter={night ? `url(#${filterId})` : undefined}>{SCENES[stage.id](!!night)}</g>
       </svg>
-      {!mini && night && <NightStars />}
-      {!mini && <Ambient id={stage.id} />}
+      {ambient && night && <NightStars />}
+      {ambient && <Ambient id={stage.id} />}
     </div>
   );
 }
