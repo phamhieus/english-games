@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { BookOpen, Check, Keyboard, Languages, Lock, Map as MapIcon, Play, Plus, RotateCcw, SlidersHorizontal, Sparkles, Swords } from 'lucide-react';
-import type { Difficulty, GameMode, PracticeSize, SessionStyle } from '@/types';
+import type { CefrLevel, Difficulty, GameMode, PracticeSize, SessionStyle } from '@/types';
 import { DIFFICULTIES } from '@/game/config/gameConfig';
 import { skinById } from '@/game/config/theme';
 import { randomStage, STAGES } from '@/game/config/stages';
@@ -17,6 +17,7 @@ import { FlatBalloon, SET_COLORS, Sunburst } from '@/components/common/Art';
 import { CannonPreview } from '@/components/common/CannonPreview';
 import { BOSSES, adventureBoss } from '@/game/config/bosses';
 import { BASIC_PACK } from '@/features/vocabulary/packs';
+import { filterByLevels, PICKABLE_LEVELS } from '@/features/vocabulary/levels';
 import { difficultyForLevel } from '@/features/adventure/adventure';
 import { useStartAdventure } from '@/hooks/useAdventure';
 import { AdventurePath } from './AdventurePath';
@@ -117,10 +118,18 @@ export function HomeScreen() {
       collectionIds: setup.collectionIds.includes(id) ? setup.collectionIds.filter((x) => x !== id) : [...setup.collectionIds, id],
     });
 
+  const toggleLevel = (level: CefrLevel) =>
+    updateSetup({ levels: setup.levels.includes(level) ? setup.levels.filter((l) => l !== level) : [...setup.levels, level] });
+  const levelCounts = useMemo(() => {
+    const counts = new Map<CefrLevel, number>();
+    for (const w of data?.words ?? []) if (w.level) counts.set(w.level, (counts.get(w.level) ?? 0) + 1);
+    return counts;
+  }, [data]);
+
   const stats = useMemo(() => {
     if (!data) return null;
     const now = Date.now();
-    const words = data.words;
+    const words = filterByLevels(data.words, setup.levels);
     return {
       total: words.length,
       fresh: words.filter((w) => !data.progress.get(w.id)?.attempts).length,
@@ -128,7 +137,7 @@ export function HomeScreen() {
       mastered: words.filter((w) => isMastered(data.progress.get(w.id))).length,
       mistakes: mistakePool(words, data.progress).length,
     };
-  }, [data]);
+  }, [data, setup.levels]);
 
   if (collections && collections.length === 0) {
     return (
@@ -175,11 +184,18 @@ export function HomeScreen() {
       stage: setup.stageMode === 'levels' ? openStages[0]!.id : randomStage(openStages).id,
       stageMode: setup.stageMode,
       stagePath: openStages.map((s) => s.id),
+      levels: setup.levels,
     });
   };
 
   const notice = poolEmpty ? (
-    !adventure && setup.mode === 'mistakes' ? 'No mistakes to review yet. Play another mode first!' : 'These sets are empty. Add some words first.'
+    !adventure && setup.mode === 'mistakes' ? (
+      'No mistakes to review yet. Play another mode first!'
+    ) : setup.levels.length ? (
+      `No ${setup.levels.join('/')} words in these sets. Pick another level.`
+    ) : (
+      'These sets are empty. Add some words first.'
+    )
   ) : selected.length === 0 ? (
     'Pick at least one word set.'
   ) : allMastered ? (
@@ -337,6 +353,26 @@ export function HomeScreen() {
                 })}
               </div>
               {selected.length > 1 && <p className="mt-2 text-sm font-bold text-candy-purple-dark">{selected.length} sets mixed together</p>}
+              <div className="mt-3 flex flex-wrap items-center gap-2" role="group" aria-label="Levels">
+                <span className="mr-1 text-sm font-bold">Level</span>
+                {(['all', ...PICKABLE_LEVELS] as const).map((l) => {
+                  const on = l === 'all' ? setup.levels.length === 0 : setup.levels.includes(l);
+                  const count = l === 'all' ? null : (levelCounts.get(l) ?? 0);
+                  return (
+                    <button
+                      key={l}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => (l === 'all' ? updateSetup({ levels: [] }) : toggleLevel(l))}
+                      className={`pick rounded-xl px-3 py-1.5 font-display font-bold ${on ? 'bg-candy-purple text-white' : 'bg-surface'}`}
+                      data-testid={`level-${l}`}
+                    >
+                      {l === 'all' ? 'All' : l}
+                      {count !== null && <span className={`ml-1 text-xs ${on ? 'text-white/80' : 'text-ink-soft'}`}>{count}</span>}
+                    </button>
+                  );
+                })}
+              </div>
             </Step>
 
             {adventure ? (

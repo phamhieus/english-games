@@ -1,13 +1,15 @@
 import { error } from './http';
 
 /**
- * GET /api/tts?text=word — an MP3 of an English word or short phrase.
- * A human recording from the Free Dictionary API when it has one (single words only),
+ * GET /api/tts?text=word — an MP3 of an English word or short phrase, British accent first
+ * (the lessons teach British English). A human recording from the Free Dictionary API when it has one (single words only),
  * otherwise Workers AI (MeloTTS). Every result is kept in D1, so each text is fetched or
  * generated once; browsers cache it too.
  */
 const MAX_LENGTH = 60;
 const MODEL = '@cf/myshell-ai/melotts';
+/** Saved audio is keyed `uk:<text>`; rows without the prefix are from when US recordings came first. */
+const KEY_PREFIX = 'uk:';
 const AUDIO_HEADERS = { 'Content-Type': 'audio/mpeg', 'Cache-Control': 'public, max-age=31536000, immutable' };
 
 export async function handleTts(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -15,7 +17,8 @@ export async function handleTts(request: Request, env: Env, ctx: ExecutionContex
   const text = normalize(new URL(request.url).searchParams.get('text') ?? '');
   if (!text) return error(400, 'Give a word (letters only, up to 60 characters).');
 
-  const saved = await env.DB.prepare('SELECT audio, source FROM tts_audio WHERE text = ?1').bind(text).first<{ audio: number[] | ArrayBuffer; source: string }>();
+  const key = KEY_PREFIX + text;
+  const saved = await env.DB.prepare('SELECT audio, source FROM tts_audio WHERE text = ?1').bind(key).first<{ audio: number[] | ArrayBuffer; source: string }>();
   if (saved) return audioResponse(new Uint8Array(saved.audio), saved.source);
 
   let source = 'dictionary';
@@ -28,7 +31,7 @@ export async function handleTts(request: Request, env: Env, ctx: ExecutionContex
 
   ctx.waitUntil(
     env.DB.prepare('INSERT OR IGNORE INTO tts_audio (text, source, audio, created_at) VALUES (?1, ?2, ?3, ?4)')
-      .bind(text, source, audio, Date.now())
+      .bind(key, source, audio, Date.now())
       .run()
       .catch((e: unknown) => console.error(JSON.stringify({ msg: 'tts save failed', text, error: String(e) }))),
   );
@@ -50,7 +53,7 @@ function audioResponse(audio: Uint8Array, source: string): Response {
 const WIKI_HEADERS = { 'User-Agent': 'WordShooter/1.0 (https://word-shooter-sage.vercel.app)' };
 
 /**
- * A recording from the Free Dictionary API, US first, then UK. Its MP3s are copies of
+ * A recording from the Free Dictionary API, UK first, then US. Its MP3s are copies of
  * Wikimedia Commons recordings; when its media host fails, the Commons MP3 is used instead.
  */
 async function fromDictionary(text: string): Promise<Uint8Array | null> {
@@ -59,7 +62,7 @@ async function fromDictionary(text: string): Promise<Uint8Array | null> {
     const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(text)}`);
     if (!res.ok) return null;
     const entries = (await res.json()) as { phonetics?: { audio?: string; sourceUrl?: string }[] }[];
-    const accent = (audio: string) => (/-us\.mp3$/.test(audio) ? 0 : /-uk\.mp3$/.test(audio) ? 1 : 2);
+    const accent = (audio: string) => (/-uk\.mp3$/.test(audio) ? 0 : /-us\.mp3$/.test(audio) ? 1 : 2);
     const recordings = entries
       .flatMap((e) => e.phonetics ?? [])
       .filter((p) => p.audio?.startsWith('https://'))

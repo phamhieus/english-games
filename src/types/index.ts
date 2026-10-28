@@ -85,6 +85,8 @@ export interface SessionConfig {
   stagePath?: StageId[];
   /** Restrict to these words (used by "Review mistakes" on the results screen). */
   wordIds?: string[];
+  /** Only words of these CEFR levels; missing or empty = every word. */
+  levels?: CefrLevel[];
   seed?: number;
   /** Set when the game is one step of an adventure (copy typing → recall → boss). */
   adventure?: AdventureInfo;
@@ -171,6 +173,8 @@ export interface AppSettings {
   sfxVolume: number;
   speechEnabled: boolean;
   speechRate: number;
+  /** Set once the 0.9× → 0.8× default change has been applied to this save. */
+  speechRateV2?: boolean;
   /** Read each word aloud right before its balloon appears. */
   announceBeforeSpawn: boolean;
   /** What to read before a balloon appears when the prompt is Vietnamese. */
