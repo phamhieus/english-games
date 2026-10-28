@@ -61,7 +61,10 @@ const AudioContextCtor: AudioCtor | undefined =
  */
 class SpeechService {
   private voices: SpeechSynthesisVoice[] = [];
+  /** A tap happened (unlock was called at least once). */
   private unlocked = false;
+  /** The silent <audio> play in a gesture went through. */
+  private htmlUnlocked = false;
   /** Holds the utterance being spoken so iOS doesn't collect it mid-way. */
   private current: SpeechSynthesisUtterance | null = null;
   private pendingTimer: number | undefined;
@@ -120,19 +123,27 @@ class SpeechService {
   }
 
   /**
-   * Call from a user gesture (tap/key). iOS only lets the page speak later — from game
-   * timers, say — once something was spoken inside a gesture, so this speaks an empty line.
+   * Call from every user gesture (tap/key). iOS only lets the page play or speak later —
+   * from game timers, say — once it did so inside a gesture. Not every event counts
+   * (pointerdown doesn't, touchend/click do), so this keeps trying until it has worked.
    */
   unlock(): void {
-    if (this.unlocked) return;
+    const webAudioReady = !this.ctx || this.ctx.state === 'running';
+    if (this.htmlUnlocked && webAudioReady && this.unlocked) return;
+    const first = !this.unlocked;
     this.unlocked = true;
     this.unlockWebAudio();
     const audio = this.audioElement();
-    if (audio && audio.paused) {
+    if (audio && !this.htmlUnlocked && audio.paused) {
       audio.src = silentWav();
-      audio.play().catch(() => undefined);
+      audio
+        .play()
+        .then(() => {
+          this.htmlUnlocked = true;
+        })
+        .catch(() => undefined);
     }
-    if (!this.available) return;
+    if (!first || !this.available) return;
     try {
       const synth = window.speechSynthesis;
       if (synth.paused) synth.resume();
@@ -163,7 +174,11 @@ class SpeechService {
   private unlockWebAudio(): void {
     if (!AUDIO_ENABLED || !AudioContextCtor) return;
     try {
+      // iOS 17+: play like media, so the ring/silent switch doesn't mute Web Audio.
+      const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
+      if (session && session.type !== 'playback') session.type = 'playback';
       this.ctx ??= new AudioContextCtor();
+      if (this.ctx.state === 'running') return;
       void this.ctx.resume();
       const src = this.ctx.createBufferSource();
       src.buffer = this.ctx.createBuffer(1, 1, 22050);
@@ -194,7 +209,7 @@ class SpeechService {
       /* ignore */
     }
     this.stopSource();
-    if (this.htmlAudioBlocked && this.ctx) {
+    if (this.htmlAudioBlocked && this.ctx?.state === 'running') {
       this.playWithWebAudio(text, opts, turn);
       return true;
     }
@@ -224,7 +239,7 @@ class SpeechService {
       window.clearTimeout(timer);
       // NotAllowedError: not inside a tap; the file itself may be fine.
       const notAllowed = e instanceof DOMException && e.name === 'NotAllowedError';
-      if (notAllowed && this.unlocked && this.ctx) {
+      if (notAllowed && this.ctx?.state === 'running') {
         // Tapped before, still refused: this browser wants a tap for every play. Web Audio doesn't.
         settled = true;
         this.htmlAudioBlocked = true;
