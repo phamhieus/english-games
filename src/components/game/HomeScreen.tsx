@@ -191,10 +191,10 @@ export function HomeScreen() {
   const notice = poolEmpty ? (
     !adventure && setup.mode === 'mistakes' ? (
       'No mistakes to review yet. Play another mode first!'
+    ) : data && filterByLevels(data.words, setup.levels).length ? (
+      'Every word here is switched off. Turn some on in the Library.'
     ) : setup.levels.length ? (
       `No ${setup.levels.join('/')} words in these sets. Pick another level.`
-    ) : data?.words.length ? (
-      'Every word here is switched off. Turn some on in the Library.'
     ) : (
       'These sets are empty. Add some words first.'
     )
