@@ -15,9 +15,17 @@ export function normalizeAnswer(input: string): string {
     .toLowerCase();
 }
 
+/**
+ * What the player has to type: the normalized answer without apostrophes, so "oclock"
+ * matches "o'clock" (typing the apostrophe still works too).
+ */
+export function typingKey(input: string): string {
+  return normalizeAnswer(input).replace(/'/g, '');
+}
+
 export function answersMatch(typed: string, expected: string): boolean {
-  const a = normalizeAnswer(typed);
-  return a.length > 0 && a === normalizeAnswer(expected);
+  const a = typingKey(typed);
+  return a.length > 0 && a === typingKey(expected);
 }
 
 /** Levenshtein distance; used only to attribute wrong answers to the closest balloon. */
