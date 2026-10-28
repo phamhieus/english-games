@@ -25,6 +25,7 @@ import { GameHud } from './GameHud';
 import { WordPreview } from './WordPreview';
 import { AnswerInput, type AnswerInputHandle } from './AnswerInput';
 import { useShortViewport } from '@/hooks/useViewportHeight';
+import { useScreenKeyboard } from '@/hooks/useScreenKeyboard';
 
 const MODE_LABEL = { copy: 'Copy Typing', recall: 'Vietnamese → English', mistakes: 'Mistake Review' } as const;
 
@@ -76,6 +77,9 @@ export default function GameScreen() {
   const endedRef = useRef(false);
   // Phone with the keyboard open: squeeze the HUD and answer box so the play field stays visible.
   const compact = useShortViewport();
+  // Touch screens type on the in-game keyboard, so the phone's keyboard never covers the field.
+  const screenKeyboard = useScreenKeyboard();
+  const switchToDeviceKeyboard = useCallback(() => updateSettings({ screenKeyboard: 'off' }), [updateSettings]);
 
   // Stages: one random stage per game, or a level journey through all of them.
   const levelMode = config?.stageMode === 'levels';
@@ -361,7 +365,15 @@ export default function GameScreen() {
           )}
         </div>
         <div className={compact ? 'px-2 pb-1.5' : 'px-3 pb-3 sm:px-4'}>
-          <AnswerInput ref={inputRef} bridge={loaded.bridge} disabled={paused} placeholder={placeholder} compact={compact} />
+          <AnswerInput
+            ref={inputRef}
+            bridge={loaded.bridge}
+            disabled={paused}
+            placeholder={placeholder}
+            compact={compact}
+            screenKeyboard={screenKeyboard}
+            onSystemKeyboard={switchToDeviceKeyboard}
+          />
         </div>
       </section>
 

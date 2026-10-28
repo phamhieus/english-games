@@ -1,11 +1,12 @@
 import Phaser from 'phaser';
 import type { GameBridge } from './GameBridge';
+import { isTouchDevice } from '@/hooks/useScreenKeyboard';
 import { BootScene } from './scenes/BootScene';
 import { GameScene } from './scenes/GameScene';
 import { BossScene } from './scenes/BossScene';
 
-/** Device pixels per CSS pixel the game renders at (capped to keep big phones fast). */
-export const renderScale = () => Math.min(2.5, Math.max(1, window.devicePixelRatio || 1));
+/** Device pixels per CSS pixel the game renders at (capped to keep phones fast: 3× screens fill 2.25× the pixels of 2×). */
+export const renderScale = () => Math.min(isTouchDevice() ? 2 : 2.5, Math.max(1, window.devicePixelRatio || 1));
 
 /**
  * Creates one Phaser game inside `parent`. The caller must call `game.destroy(true)`
@@ -31,7 +32,8 @@ export function createGame(parent: HTMLElement, bridge: GameBridge): Phaser.Game
     },
     input: { keyboard: false },
     audio: { noAudio: true },
-    render: { antialias: true, roundPixels: false },
+    // At 2× and up, edges are already smooth; multisampling a phone-sized canvas costs frames.
+    render: { antialias: dpr < 2, roundPixels: false },
     scene: [BootScene, GameScene, BossScene],
   });
   game.registry.set('bridge', bridge);
