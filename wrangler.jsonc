@@ -20,6 +20,8 @@
       "migrations_dir": "worker/migrations",
     },
   ],
+  // Workers AI: speaks words the dictionary has no recording for (/api/tts).
+  "ai": { "binding": "AI" },
   "vars": {
     // Graph API version used for Facebook Login.
     "FACEBOOK_GRAPH_VERSION": "v23.0",

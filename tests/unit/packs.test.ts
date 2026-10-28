@@ -3,7 +3,7 @@ import { IDBFactory, IDBKeyRange } from 'fake-indexeddb';
 import { CEFR_LEVELS } from '@/types';
 import { createDbForTesting, setDbForTesting, type WordShooterDB } from '@/services/database/db';
 import { addWord, createCollection, listWords } from '@/services/database/repositories';
-import { addPack, replaceOldStarterSets, seedIfFirstRun } from '@/services/database/seed';
+import { addNewBasicWords, addPack, replaceOldStarterSets, seedIfFirstRun } from '@/services/database/seed';
 import { BASIC_PACK, PRONUNCIATION_SLIDES, packWords } from '@/features/vocabulary/packs';
 import { OLD_STARTER_NAME } from '@/features/vocabulary/sampleData';
 
@@ -13,9 +13,9 @@ describe('Basic set', () => {
 
   it('keeps every slide word once', () => {
     const rows = PRONUNCIATION_SLIDES.flatMap((g) => g.rows.map((r) => r[0].toLowerCase()));
-    expect(rows).toHaveLength(174);
+    expect(rows).toHaveLength(210);
     expect(words).toHaveLength(new Set(rows).size);
-    expect(words).toHaveLength(166);
+    expect(words).toHaveLength(199);
     expect(new Set(words.map((w) => w.english.toLowerCase())).size).toBe(words.length);
   });
 
@@ -25,6 +25,7 @@ describe('Basic set', () => {
     expect(find('tour').pronunciation).toBe('/tʊə/ or /tɔː/');
     expect(find('tour').tags).toEqual(['sound /ʊə/']);
     expect(find('pen').tags).toEqual(['sound /p/']);
+    expect(find('beautiful').tags).toEqual(['sound /b/', 'sound /f/']);
   });
 
   it('every word has a meaning, a pronunciation and a CEFR level', () => {
@@ -62,10 +63,11 @@ describe('Basic in the library', () => {
     const sets = await db.collections.toArray();
     expect(sets.map((c) => c.name)).toEqual(['Basic']);
     const saved = await listWords(BASIC_PACK.id);
-    expect(saved).toHaveLength(166);
+    expect(saved).toHaveLength(199);
     expect(saved.find((w) => w.english === 'potato')?.id).toBe('basic:potato');
     await addPack(BASIC_PACK); // already there: no second copy
-    expect(await db.vocabulary.count()).toBe(166);
+    expect(await db.vocabulary.count()).toBe(199);
+    expect(await addNewBasicWords()).toBe(0);
   });
 
   it('replaces an untouched old Starter Pack and the earlier pronunciation copy', async () => {
@@ -85,5 +87,34 @@ describe('Basic in the library', () => {
     await addWord(starter.id, { english: 'dragonfruit', vietnamese: 'thanh long' });
     expect(await replaceOldStarterSets()).toBe(false);
     expect((await db.collections.toArray()).map((c) => c.name)).toEqual([OLD_STARTER_NAME]);
+  });
+
+  it('gives a player who already has Basic the /f/ and /v/ words, once', async () => {
+    // Basic as it was before /f/ and /v/ were added.
+    const isNew = (t: string) => t === 'sound /f/' || t === 'sound /v/';
+    const words = BASIC_PACK.words
+      .map((w) => ({ ...w, tags: w.tags?.filter((t) => !isNew(t)) }))
+      .filter((w) => w.tags?.length);
+    const old = { ...BASIC_PACK, words };
+    await addPack(old);
+    await db.settings.put({ key: 'seeded-v1', value: true });
+    const before = await db.vocabulary.count();
+
+    expect(await addNewBasicWords()).toBe(199 - before);
+    expect(await db.vocabulary.count()).toBe(199);
+    expect((await db.vocabulary.get('basic:beautiful'))?.tags).toEqual(['sound /b/', 'sound /f/']);
+    expect((await db.vocabulary.get('basic:voice'))?.tags).toEqual(['sound /ɔɪ/', 'sound /v/']);
+    expect((await db.vocabulary.get('basic:van'))?.collectionId).toBe('basic');
+
+    // A word deleted afterwards stays deleted.
+    await db.vocabulary.delete('basic:van');
+    expect(await addNewBasicWords()).toBe(0);
+    expect(await db.vocabulary.get('basic:van')).toBeUndefined();
+  });
+
+  it('adds nothing for a player who deleted Basic', async () => {
+    await db.settings.put({ key: 'seeded-v1', value: true });
+    expect(await addNewBasicWords()).toBe(0);
+    expect(await db.collections.count()).toBe(0);
   });
 });

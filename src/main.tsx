@@ -11,6 +11,21 @@ import './index.css';
 import { App } from '@/app/App';
 import { initPlatform } from '@/services/platform/platform';
 
+// After a deploy, a tab still on the old build can't load the old build's lazy chunks (the
+// game screen, Phaser) any more. Reload into the new build instead of showing an error —
+// at most once a minute, so a real network problem doesn't loop.
+window.addEventListener('vite:preloadError', (event) => {
+  try {
+    const last = Number(sessionStorage.getItem('reloaded-for-chunk') ?? 0);
+    if (Date.now() - last < 60_000) return;
+    sessionStorage.setItem('reloaded-for-chunk', String(Date.now()));
+  } catch {
+    /* no storage: reload anyway */
+  }
+  event.preventDefault();
+  window.location.reload();
+});
+
 const root = document.getElementById('root');
 if (!root) throw new Error('Root element missing');
 

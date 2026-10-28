@@ -2,11 +2,13 @@ import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { BarChart3, BookOpen, Gamepad2, Settings as SettingsIcon, Shirt, TriangleAlert } from 'lucide-react';
 import { isPersistent, openDatabase } from '@/services/database/db';
 import { markInterruptedSessions } from '@/services/database/repositories';
-import { replaceOldStarterSets, seedIfFirstRun } from '@/services/database/seed';
+import { addNewBasicWords, replaceOldStarterSets, seedIfFirstRun } from '@/services/database/seed';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useAppStore, type Screen } from '@/stores/appStore';
 import { useViewportHeight } from '@/hooks/useViewportHeight';
+import { useUpdateReload } from '@/hooks/useUpdateReload';
 import { music } from '@/services/audio/music';
+import { speech } from '@/services/speech/speech';
 import { HomeScreen } from '@/components/game/HomeScreen';
 import { ResultsScreen } from '@/components/game/ResultsScreen';
 import { LibraryScreen } from '@/components/vocabulary/LibraryScreen';
@@ -66,6 +68,8 @@ export function App() {
   const navigate = useAppStore((s) => s.navigate);
   const sessionKey = useAppStore((s) => s.sessionKey);
   const [askSignIn, setAskSignIn] = useState(false);
+  // A newer build was deployed: reload, but never in the middle of a game.
+  useUpdateReload(screen !== 'game');
   const playAsGuest = useCallback(() => {
     try {
       sessionStorage.setItem(GUEST_KEY, '1');
@@ -82,6 +86,7 @@ export function App() {
       await markInterruptedSessions().catch(() => 0);
       await seedIfFirstRun().catch((e: unknown) => console.warn('[seed]', e));
       await replaceOldStarterSets().catch((e: unknown) => console.warn('[basic]', e));
+      await addNewBasicWords().catch((e: unknown) => console.warn('[basic]', e));
       await Promise.all([useSettingsStore.getState().load(), useAppStore.getState().loadSetup()]);
       if (!cancelled) setReady(true);
     })().catch((e: unknown) => {
@@ -146,14 +151,16 @@ export function App() {
     if (ready && screen !== 'game') music.play('menu');
   }, [ready, screen]);
 
-  // Browsers only start audio after a user gesture.
+  // Browsers only start audio (and iOS only speaks) after a user gesture.
   useEffect(() => {
-    const unlock = () => music.unlock();
-    window.addEventListener('pointerdown', unlock);
-    window.addEventListener('keydown', unlock);
+    const unlock = () => {
+      music.unlock();
+      speech.unlock();
+    };
+    const events = ['pointerdown', 'touchend', 'click', 'keydown'] as const;
+    for (const e of events) window.addEventListener(e, unlock);
     return () => {
-      window.removeEventListener('pointerdown', unlock);
-      window.removeEventListener('keydown', unlock);
+      for (const e of events) window.removeEventListener(e, unlock);
     };
   }, []);
 

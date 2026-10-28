@@ -25,12 +25,27 @@ function fbInstant(): Plugin {
   };
 }
 
+/**
+ * Emits version.json with this build's id. Open games poll it and reload when a newer
+ * build is deployed (see useUpdateReload).
+ */
+function buildVersion(id: string): Plugin {
+  return {
+    name: 'build-version',
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ id }) });
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   const isFb = mode === 'fbinstant';
+  const buildId = Date.now().toString(36);
   return {
     // Instant Games are served from a sub-path, so asset URLs must be relative.
     base: isFb ? './' : '/',
-    plugins: [react(), tailwindcss(), ...(isFb ? [fbInstant()] : [])],
+    plugins: [react(), tailwindcss(), ...(isFb ? [fbInstant()] : [buildVersion(buildId)])],
+    define: { 'import.meta.env.VITE_BUILD_ID': JSON.stringify(buildId) },
     resolve: {
       alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
     },
