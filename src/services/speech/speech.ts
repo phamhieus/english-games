@@ -58,10 +58,10 @@ const isInAppBrowser = typeof navigator !== 'undefined' && /Zalo|FBAN|FBAV|FB_IA
  */
 class SpeechService {
   private voices: SpeechSynthesisVoice[] = [];
-  /** A tap happened (unlock was called at least once). */
-  private unlocked = false;
   /** The silent <audio> play in a gesture went through. */
   private htmlUnlocked = false;
+  /** Some utterance has started, so speech synthesis is allowed from timers now. */
+  private speechUnlocked = false;
   /** Holds the utterance being spoken so iOS doesn't collect it mid-way. */
   private current: SpeechSynthesisUtterance | null = null;
   private pendingTimer: number | undefined;
@@ -125,10 +125,8 @@ class SpeechService {
    * (pointerdown doesn't, touchend/click do), so this keeps trying until it has worked.
    */
   unlock(): void {
-    const webAudioReady = !this.ctx || this.ctx.state === 'running';
-    if (this.htmlUnlocked && webAudioReady && this.unlocked) return;
-    const first = !this.unlocked;
-    this.unlocked = true;
+    const webAudioReady = !!this.ctx && this.ctx.state === 'running';
+    if (this.htmlUnlocked && webAudioReady && (this.speechUnlocked || !this.available)) return;
     this.unlockWebAudio();
     const audio = this.audioElement();
     if (audio && !this.htmlUnlocked && audio.paused) {
@@ -140,13 +138,18 @@ class SpeechService {
         })
         .catch(() => undefined);
     }
-    if (!first || !this.available) return;
+    if (this.speechUnlocked || !this.available) return;
     try {
       const synth = window.speechSynthesis;
       if (synth.paused) synth.resume();
       if (!synth.speaking && !synth.pending) {
-        const u = new SpeechSynthesisUtterance('');
+        // A single space: silent, but (unlike '') iOS reports it started, so we know it worked.
+        const u = new SpeechSynthesisUtterance(' ');
         u.volume = 0;
+        u.onstart = u.onend = () => {
+          this.speechUnlocked = true;
+        };
+        this.current = u;
         synth.speak(u);
       }
       this.loadVoices();
@@ -321,6 +324,9 @@ class SpeechService {
       // On iOS (no voice set) the language alone picks the system's British voice.
       u.lang = (isIOS ? undefined : voice?.lang) ?? (lang === 'en' ? 'en-GB' : 'vi-VN');
       u.rate = Math.max(0.5, Math.min(1.5, opts.rate ?? 0.9));
+      u.onstart = () => {
+        this.speechUnlocked = true;
+      };
       u.onend = u.onerror = () => {
         if (this.current === u) this.current = null;
       };

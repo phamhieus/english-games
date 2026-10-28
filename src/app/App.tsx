@@ -153,9 +153,11 @@ export function App() {
 
   // Browsers only start audio (and iOS only speaks) after a user gesture.
   useEffect(() => {
-    const unlock = () => {
+    const unlock = (e: Event) => {
       music.unlock();
-      speech.unlock();
+      // iOS doesn't count pointerdown as a gesture for audio/speech; a speak() queued there would
+      // sit pending and block the retry on touchend.
+      if (e.type !== 'pointerdown') speech.unlock();
     };
     const events = ['pointerdown', 'touchend', 'click', 'keydown'] as const;
     for (const e of events) window.addEventListener(e, unlock);
