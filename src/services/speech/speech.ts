@@ -1,4 +1,5 @@
 import { isFacebookInstant } from '@/services/platform/platform';
+import { music } from '@/services/audio/music';
 
 export type SpeechLang = 'en' | 'vi';
 
@@ -43,10 +44,6 @@ const isIOS =
  */
 const isInAppBrowser = typeof navigator !== 'undefined' && /Zalo|FBAN|FBAV|FB_IAB|Instagram|Line\/|MicroMessenger|musical_ly|TikTok/i.test(navigator.userAgent);
 
-type AudioCtor = typeof AudioContext;
-const AudioContextCtor: AudioCtor | undefined =
-  typeof window === 'undefined' ? undefined : (window.AudioContext ?? (window as unknown as { webkitAudioContext?: AudioCtor }).webkitAudioContext);
-
 /**
  * Speaks words: English plays an MP3 from /api/tts (a real recording when the dictionary has
  * one), falling back to the browser SpeechSynthesis API; Vietnamese always uses the browser.
@@ -57,7 +54,7 @@ const AudioContextCtor: AudioCtor | undefined =
  * straight after cancel() is dropped, and a voice picked from getVoices() may not be
  * installed — so there we only set the language and let iOS use its default voice.
  * When <audio> isn't allowed to play outside a tap (in-app browsers), the MP3 is decoded and
- * played through an AudioContext unlocked by the first tap.
+ * played through the music's AudioContext, which every tap keeps unlocked.
  */
 class SpeechService {
   private voices: SpeechSynthesisVoice[] = [];
@@ -170,22 +167,26 @@ class SpeechService {
     return this.speakWithBrowser(text, lang, opts);
   }
 
-  /** Creates and resumes the AudioContext inside the gesture, with a silent buffer for older iOS. */
+  /** Resumes the shared AudioContext inside the gesture, with a silent buffer for older iOS. */
   private unlockWebAudio(): void {
-    if (!AUDIO_ENABLED || !AudioContextCtor) return;
+    if (!AUDIO_ENABLED) return;
     try {
       // iOS 17+: play like media, so the ring/silent switch doesn't mute Web Audio.
       const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
       if (session && session.type !== 'playback') session.type = 'playback';
-      this.ctx ??= new AudioContextCtor();
-      if (this.ctx.state === 'running') return;
+    } catch {
+      /* older browsers */
+    }
+    this.ctx = music.audioContext();
+    if (!this.ctx || this.ctx.state === 'running') return;
+    try {
       void this.ctx.resume();
       const src = this.ctx.createBufferSource();
       src.buffer = this.ctx.createBuffer(1, 1, 22050);
       src.connect(this.ctx.destination);
       src.start(0);
     } catch {
-      this.ctx = null;
+      /* resumed on the next tap */
     }
   }
 
