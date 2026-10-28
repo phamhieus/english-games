@@ -9,6 +9,8 @@ interface Props {
   /** Switch to the device's own keyboard. */
   onSystemKeyboard(): void;
   disabled?: boolean;
+  /** Shorter keys when the screen is short (a phone held sideways). */
+  compact?: boolean;
 }
 
 /**
@@ -16,17 +18,17 @@ interface Props {
  * unlike it, never resizes the page, so the play field (and the Phaser canvas) stays put.
  * Keys act on pointerdown so fast typing isn't slowed by the click delay.
  */
-export const ScreenKeyboard = memo(function ScreenKeyboard({ onKey, onBackspace, onSystemKeyboard, disabled = false }: Props) {
+export const ScreenKeyboard = memo(function ScreenKeyboard({ onKey, onBackspace, onSystemKeyboard, disabled = false, compact = false }: Props) {
   const press = (fn: () => void) => (e: React.PointerEvent) => {
     e.preventDefault();
     if (!disabled) fn();
   };
   const key =
-    'btn-candy flex h-10 min-w-0 flex-1 items-center justify-center rounded-lg bg-surface font-display text-lg font-bold text-ink select-none touch-manipulation';
+    `btn-candy flex ${compact ? 'h-8 text-base' : 'h-10 text-lg'} min-w-0 flex-1 items-center justify-center rounded-lg bg-surface font-display font-bold text-ink select-none touch-manipulation`;
   const shadow = { ['--shadow' as string]: 'var(--color-line)' };
 
   return (
-    <div className={`flex flex-col gap-1.5 pt-1.5 ${disabled ? 'opacity-50' : ''}`} data-testid="screen-keyboard" aria-label="Keyboard">
+    <div className={`flex flex-col ${compact ? 'gap-1 pt-1' : 'gap-1.5 pt-1.5'} ${disabled ? 'opacity-50' : ''}`} data-testid="screen-keyboard" aria-label="Keyboard">
       {ROWS.map((row, r) => (
         <div key={row} className={`flex gap-1 ${r === 1 ? 'px-[5%]' : ''}`}>
           {r === 2 && (

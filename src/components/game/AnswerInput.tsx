@@ -153,7 +153,7 @@ export const AnswerInput = forwardRef<AnswerInputHandle, Props>(function AnswerI
           <CornerDownLeft size={24} />
         </button>
       </form>
-      {screenKeyboard && <ScreenKeyboard onKey={typeKey} onBackspace={backspace} onSystemKeyboard={switchToSystemKeyboard} disabled={disabled} />}
+      {screenKeyboard && <ScreenKeyboard onKey={typeKey} onBackspace={backspace} onSystemKeyboard={switchToSystemKeyboard} disabled={disabled} compact={compact} />}
     </>
   );
 });

@@ -3,9 +3,10 @@ import type { GameSetup } from '@/stores/appStore';
 
 /**
  * The account's saved game: everything needed to continue on another device.
- * The DeepSeek API key is deliberately left out — it never leaves this browser.
+ * The DeepSeek API key is deliberately left out — it never leaves this browser — and so is
+ * the keyboard choice, which depends on the device (a phone's choice shouldn't reach a laptop).
  */
-export type SyncedSettings = Omit<AppSettings, 'deepseekApiKey'>;
+export type SyncedSettings = Omit<AppSettings, 'deepseekApiKey' | 'screenKeyboard'>;
 
 export interface SyncSnapshot {
   format: 1;
@@ -18,7 +19,7 @@ export interface SyncSnapshot {
 }
 
 export function toSyncedSettings(s: AppSettings): SyncedSettings {
-  const { deepseekApiKey: _secret, ...rest } = s;
+  const { deepseekApiKey: _secret, screenKeyboard: _device, ...rest } = s;
   return rest;
 }
 

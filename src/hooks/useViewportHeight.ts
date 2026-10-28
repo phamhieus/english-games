@@ -42,3 +42,17 @@ export function useShortViewport(limit = 560): boolean {
   }, [limit]);
   return short;
 }
+
+/** True when the screen is wider than tall (a phone held sideways). */
+export function useLandscape(): boolean {
+  const query = () => window.matchMedia?.('(orientation: landscape)');
+  const [landscape, setLandscape] = useState(() => !!query()?.matches);
+  useEffect(() => {
+    const mq = query();
+    if (!mq) return;
+    const update = () => setLandscape(mq.matches);
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+  return landscape;
+}

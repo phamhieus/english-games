@@ -82,7 +82,7 @@ function normalize(s: SyncSnapshot): SyncSnapshot {
   };
 }
 
-/** Replaces this device's data with `s` (the DeepSeek key stays as it is). */
+/** Replaces this device's data with `s` (the DeepSeek key and the keyboard choice stay as they are). */
 async function applySnapshot(s: SyncSnapshot): Promise<void> {
   const db = getDb();
   await db.transaction('rw', [db.collections, db.vocabulary, db.progress, db.sessions], async () => {
@@ -93,7 +93,7 @@ async function applySnapshot(s: SyncSnapshot): Promise<void> {
     await db.sessions.bulkPut(s.sessions);
   });
   const settings = useSettingsStore.getState();
-  settings.update({ ...s.settings, deepseekApiKey: settings.settings.deepseekApiKey });
+  settings.update({ ...s.settings, deepseekApiKey: settings.settings.deepseekApiKey, screenKeyboard: settings.settings.screenKeyboard });
   useAppStore.getState().updateSetup(s.setup);
 }
 

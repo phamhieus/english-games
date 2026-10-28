@@ -24,7 +24,7 @@ import { PhaserCanvas } from './PhaserCanvas';
 import { GameHud } from './GameHud';
 import { WordPreview } from './WordPreview';
 import { AnswerInput, type AnswerInputHandle } from './AnswerInput';
-import { useShortViewport } from '@/hooks/useViewportHeight';
+import { useLandscape, useShortViewport } from '@/hooks/useViewportHeight';
 import { useScreenKeyboard } from '@/hooks/useScreenKeyboard';
 
 const MODE_LABEL = { copy: 'Copy Typing', recall: 'Vietnamese → English', mistakes: 'Mistake Review' } as const;
@@ -79,6 +79,9 @@ export default function GameScreen() {
   const compact = useShortViewport();
   // Touch screens type on the in-game keyboard, so the phone's keyboard never covers the field.
   const screenKeyboard = useScreenKeyboard();
+  // A phone held sideways has no height to spare: the keyboard goes beside the play field instead of under it.
+  const landscape = useLandscape();
+  const sideKeyboard = screenKeyboard && compact && landscape;
   const switchToDeviceKeyboard = useCallback(() => updateSettings({ screenKeyboard: 'off' }), [updateSettings]);
 
   // Stages: one random stage per game, or a level journey through all of them.
@@ -351,29 +354,31 @@ export default function GameScreen() {
         <div className={compact ? 'px-2 pt-1.5' : 'px-3 pt-2 sm:px-4 sm:pt-3'}>
           <GameHud hud={hud} level={levelMode ? level + 1 : null} compact={compact} onPause={() => setPause(true)} />
         </div>
-        <div className="relative min-h-0 flex-1">
-          <PhaserCanvas bridge={loaded.bridge} onPointerDown={() => inputRef.current?.focus()} />
-          {feedback && (
-            <div
-              key={feedback.id}
-              className={`animate-pop-in pointer-events-none absolute top-2 left-1/2 z-10 -translate-x-1/2 rounded-full px-4 py-1.5 text-sm font-bold shadow ${
-                feedback.kind === 'combo' ? 'bg-candy-sun' : feedback.kind === 'correct' ? 'bg-candy-mint' : 'bg-surface text-candy-pink-dark'
-              }`}
-            >
-              {feedback.text}
-            </div>
-          )}
-        </div>
-        <div className={compact ? 'px-2 pb-1.5' : 'px-3 pb-3 sm:px-4'}>
-          <AnswerInput
-            ref={inputRef}
-            bridge={loaded.bridge}
-            disabled={paused}
-            placeholder={placeholder}
-            compact={compact}
-            screenKeyboard={screenKeyboard}
-            onSystemKeyboard={switchToDeviceKeyboard}
-          />
+        <div className={`flex min-h-0 flex-1 ${sideKeyboard ? 'flex-row' : 'flex-col'}`}>
+          <div className="relative min-h-0 min-w-0 flex-1">
+            <PhaserCanvas bridge={loaded.bridge} onPointerDown={() => inputRef.current?.focus()} />
+            {feedback && (
+              <div
+                key={feedback.id}
+                className={`animate-pop-in pointer-events-none absolute top-2 left-1/2 z-10 -translate-x-1/2 rounded-full px-4 py-1.5 text-sm font-bold shadow ${
+                  feedback.kind === 'combo' ? 'bg-candy-sun' : feedback.kind === 'correct' ? 'bg-candy-mint' : 'bg-surface text-candy-pink-dark'
+                }`}
+              >
+                {feedback.text}
+              </div>
+            )}
+          </div>
+          <div className={sideKeyboard ? 'flex w-[42%] shrink-0 flex-col justify-end px-2 pb-1.5' : compact ? 'px-2 pb-1.5' : 'px-3 pb-3 sm:px-4'}>
+            <AnswerInput
+              ref={inputRef}
+              bridge={loaded.bridge}
+              disabled={paused}
+              placeholder={placeholder}
+              compact={compact}
+              screenKeyboard={screenKeyboard}
+              onSystemKeyboard={switchToDeviceKeyboard}
+            />
+          </div>
         </div>
       </section>
 
