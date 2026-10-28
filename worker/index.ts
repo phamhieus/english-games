@@ -1,6 +1,7 @@
 import { availableProviders, currentUser, handleAuth } from './auth';
 import { getData, putData } from './data';
 import { error, json, sameOrigin } from './http';
+import { handleTts } from './tts';
 
 /**
  * Word Shooter Worker. Static assets (the built app) are served by the assets binding;
@@ -37,6 +38,9 @@ export default {
           if (request.method === 'PUT') return await putData(request, env, user);
           return error(405, 'Method not allowed.');
         }
+
+        case 'tts':
+          return await handleTts(request, env, ctx);
 
         default:
           return error(404, 'Not found.');

@@ -11,6 +11,7 @@ import { createId } from '@/utils/id';
 export function useStartAdventure(): (collectionIds: string[], collectionName: string) => void {
   const startGame = useAppStore((s) => s.startGame);
   const size = useAppStore((s) => s.setup.practiceSize);
+  const levels = useAppStore((s) => s.setup.levels);
   const defeated = useSettingsStore((s) => s.settings.bossesDefeated);
   const level = useProgress()?.level ?? 1;
   return useCallback(
@@ -24,8 +25,9 @@ export function useStartAdventure(): (collectionIds: string[], collectionName: s
           size,
           stage: randomStage(unlockedStages(level)).id,
           id: createId(),
+          levels,
         }),
       ),
-    [startGame, size, defeated, level],
+    [startGame, size, levels, defeated, level],
   );
 }

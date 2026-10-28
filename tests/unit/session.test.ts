@@ -154,6 +154,10 @@ describe('targeting', () => {
     expect(findPrefixTarget('ap', balloons)?.id).toBe(2);
     expect(matchedPrefixLength('App', 'apple')).toBe(3);
     expect(matchedPrefixLength('apx', 'apple')).toBe(0);
+    // Apostrophes are skipped: "oc" covers "o'c".
+    expect(matchedPrefixLength('oc', "o'clock")).toBe(3);
+    expect(matchedPrefixLength("o'c", 'o’clock')).toBe(3);
+    expect(findExactTarget('oclock', [{ id: 9, answer: "o'clock", progress: 0, claimed: false }])?.id).toBe(9);
   });
 
   it('attributes a wrong answer to the most similar balloon only when close', () => {

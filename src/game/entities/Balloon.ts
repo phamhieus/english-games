@@ -12,13 +12,24 @@ export interface BalloonInit {
   spawnClock: number;
   /** Highlight typed characters on the prompt itself (only when prompt === answer). */
   inlineHighlight: boolean;
-  /** Copy Typing: hide the word as `_ _ _` and reveal letters as they are typed. */
+  /** Copy Typing: hide the word as `f _ _ _` (first letter of each word shown) and reveal letters as they are typed. */
   masked?: boolean;
 }
 
-/** Letter-spaced text; with `mask`, letters/digits become "_" (spaces and punctuation stay). */
-function spaced(text: string, mask: boolean): string {
-  return [...text].map((ch) => (mask && /[\p{L}\p{N}]/u.test(ch) ? '_' : ch)).join(' ');
+const isLetter = (ch: string) => /[\p{L}\p{N}]/u.test(ch);
+/** A word starts the text or follows a space or hyphen ("o'clock" is one word). */
+const startsWord = (prev: string | undefined) => prev === undefined || /[\s-]/.test(prev);
+
+/**
+ * Letter-spaced `text`, or with `mask` its letters from index `from` on, where letters/digits
+ * become "_" except the first letter of each word, kept as a hint (spaces and punctuation stay).
+ */
+function spaced(text: string, mask: boolean, from = 0): string {
+  const chars = [...text];
+  return chars
+    .slice(from)
+    .map((ch, i) => (mask && isLetter(ch) && !startsWord(chars[from + i - 1]) ? '_' : ch))
+    .join(' ');
 }
 
 const MAX_TEXT_WIDTH = 240;
@@ -181,7 +192,7 @@ export class Balloon extends Phaser.GameObjects.Container implements TargetCandi
     if (this.masked) {
       const n = Math.min(matched, this.prompt.length);
       this.typedText.setText(spaced(this.prompt.slice(0, n), false) + (n > 0 && n < this.prompt.length ? ' ' : ''));
-      this.restText.setText(spaced(this.prompt.slice(n), true));
+      this.restText.setText(spaced(this.prompt, true, n));
       this.layoutText();
     } else if (this.inlineHighlight) {
       const n = Math.min(matched, this.prompt.length);

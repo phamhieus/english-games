@@ -240,6 +240,52 @@ export const PRONUNCIATION_SLIDES: readonly { sound: string; rows: readonly Row[
       ['October', 'tháng Mười', '/ɒkˈtəʊbə/', 'noun', 'A1'],
     ],
   },
+  {
+    sound: '/f/',
+    rows: [
+      ['fan', 'cái quạt', '/fæn/', 'noun', 'A2'],
+      ['fish', 'con cá', '/fɪʃ/', 'noun', 'A1'],
+      ['food', 'đồ ăn', '/fuːd/', 'noun', 'A1'],
+      ['feet', 'bàn chân (số nhiều)', '/fiːt/', 'noun', 'A1'],
+      ['face', 'khuôn mặt', '/feɪs/', 'noun', 'A1'],
+      ['four', 'số bốn', '/fɔː/', 'number', 'A1'],
+      ['fly', 'bay', '/flaɪ/', 'verb', 'A1'],
+      ['friend', 'bạn bè', '/frend/', 'noun', 'A1'],
+      ['fresh', 'tươi', '/freʃ/', 'adjective', 'A2'],
+      ['leaf', 'chiếc lá', '/liːf/', 'noun', 'A2'],
+      ['safe', 'an toàn', '/seɪf/', 'adjective', 'A2'],
+      ['laugh', 'cười', '/lɑːf/', 'verb', 'A1'],
+      ['coffee', 'cà phê', '/ˈkɒfi/', 'noun', 'A1'],
+      ['family', 'gia đình', '/ˈfæməli/', 'noun', 'A1'],
+      ['office', 'văn phòng', '/ˈɒfɪs/', 'noun', 'A1'],
+      ['fifty', 'năm mươi', '/ˈfɪfti/', 'number', 'A1'],
+      ['before', 'trước khi', '/bɪˈfɔː/', 'preposition', 'A1'],
+      ['beautiful', 'xinh đẹp', '/ˈbjuːtɪfəl/', 'adjective', 'A1'],
+    ],
+  },
+  {
+    sound: '/v/',
+    rows: [
+      ['van', 'xe tải nhỏ', '/væn/', 'noun', 'A2'],
+      ['vet', 'bác sĩ thú y', '/vet/', 'noun', 'A2'],
+      ['vine', 'dây leo, cây nho', '/vaɪn/', 'noun', 'B2'],
+      ['voice', 'giọng nói', '/vɔɪs/', 'noun', 'A2'],
+      ['view', 'quang cảnh', '/vjuː/', 'noun', 'A2'],
+      ['vote', 'bỏ phiếu', '/vəʊt/', 'verb', 'B1'],
+      ['save', 'cứu, tiết kiệm', '/seɪv/', 'verb', 'A2'],
+      ['leave', 'rời đi', '/liːv/', 'verb', 'A1'],
+      ['love', 'yêu', '/lʌv/', 'verb', 'A1'],
+      ['five', 'số năm', '/faɪv/', 'number', 'A1'],
+      ['glove', 'găng tay', '/glʌv/', 'noun', 'A2'],
+      ['drive', 'lái xe', '/draɪv/', 'verb', 'A1'],
+      ['seven', 'số bảy', '/ˈsevən/', 'number', 'A1'],
+      ['river', 'dòng sông', '/ˈrɪvə/', 'noun', 'A1'],
+      ['visit', 'thăm', '/ˈvɪzɪt/', 'verb', 'A1'],
+      ['heavy', 'nặng', '/ˈhevi/', 'adjective', 'A2'],
+      ['never', 'không bao giờ', '/ˈnevə/', 'adverb', 'A1'],
+      ['arrive', 'đến nơi', '/əˈraɪv/', 'verb', 'A2'],
+    ],
+  },
 ];
 
 /**
@@ -264,13 +310,16 @@ export function packWords(groups: readonly { sound: string; rows: readonly Row[]
   return [...byWord.values()];
 }
 
-/** The default set: everyday words for 10 English sounds, from the pronunciation slides. */
+/** The default set: everyday words for 12 English sounds, from the pronunciation slides. */
 export const BASIC_PACK: WordPack = {
   id: 'basic',
   name: 'Basic',
-  description: 'Everyday words for 10 English sounds: /p/ /b/ /t/ /d/ /eə/ /ʊə/ /aʊ/ /ɪə/ /ɔɪ/ /əʊ/. Search "sound /p/" to see one group.',
+  description: 'Everyday words for 12 English sounds: /p/ /b/ /t/ /d/ /eə/ /ʊə/ /aʊ/ /ɪə/ /ɔɪ/ /əʊ/ /f/ /v/. Search "sound /p/" to see one group.',
   words: packWords(PRONUNCIATION_SLIDES),
 };
+
+/** Sounds added to Basic after its first release; players who already have Basic get their words once. */
+export const BASIC_ADDED_SOUNDS: readonly { key: string; sounds: readonly string[] }[] = [{ key: 'basic-added-f-v', sounds: ['/f/', '/v/'] }];
 
 /** Ids of earlier built-in copies of these words, replaced by Basic. */
 export const OLD_PACK_IDS: readonly string[] = ['pack-pronunciation'];

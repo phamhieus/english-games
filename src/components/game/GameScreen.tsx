@@ -5,6 +5,7 @@ import { GameBridge, type FeedbackEvent, type HudState } from '@/game/GameBridge
 import { GameSession, type RunState } from '@/game/systems/SessionSystem';
 import { DIFFICULTIES } from '@/game/config/gameConfig';
 import { normalizeAnswer } from '@/utils/text';
+import { filterByLevels } from '@/features/vocabulary/levels';
 import { createRng } from '@/utils/random';
 import { createId } from '@/utils/id';
 import { getProgressMap, listWords, saveSession } from '@/services/database/repositories';
@@ -21,6 +22,7 @@ import { StageBackdrop } from './StageBackdrop';
 import { Logo } from '@/components/common/Art';
 import { PhaserCanvas } from './PhaserCanvas';
 import { GameHud } from './GameHud';
+import { WordPreview } from './WordPreview';
 import { AnswerInput, type AnswerInputHandle } from './AnswerInput';
 import { useShortViewport } from '@/hooks/useViewportHeight';
 import { useScreenKeyboard } from '@/hooks/useScreenKeyboard';
@@ -35,7 +37,7 @@ interface Loaded {
 
 async function prepare(config: SessionConfig): Promise<Loaded> {
   const ids = config.collectionIds?.length ? config.collectionIds : [config.collectionId];
-  const all = (await Promise.all(ids.map((id) => listWords(id)))).flat();
+  const all = filterByLevels((await Promise.all(ids.map((id) => listWords(id)))).flat(), config.levels);
   // The same English word in two sets would spawn twice; keep the first.
   const seen = new Set<string>();
   const words = all.filter((w) => {
@@ -64,6 +66,8 @@ export default function GameScreen() {
   const settings = useSettingsStore((s) => s.settings);
   const updateSettings = useSettingsStore((s) => s.update);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
+  // The game's words pop up for a moment; the game starts when the pop-up closes.
+  const [started, setStarted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hud, setHud] = useState<HudState | null>(null);
   const [paused, setPaused] = useState(false);
@@ -100,7 +104,13 @@ export default function GameScreen() {
       .then((l) => {
         if (cancelled) return;
         if (l.bridge.session.poolSize === 0) {
-          setError(config.mode === 'mistakes' ? 'There are no mistakes to review in this collection.' : 'This collection has no words.');
+          setError(
+            config.mode === 'mistakes'
+              ? 'There are no mistakes to review in this collection.'
+              : config.levels?.length
+                ? `This collection has no ${config.levels.join('/')} words.`
+                : 'This collection has no words.',
+          );
           return;
         }
         setHud(l.bridge.hud());
@@ -155,7 +165,7 @@ export default function GameScreen() {
 
   // Periodically persist progress + an in-progress record (survives refresh as "interrupted").
   useEffect(() => {
-    if (!loaded) return;
+    if (!loaded || !started) return;
     const save = () => {
       if (endedRef.current) return;
       void loaded.saver.flush();
@@ -167,7 +177,7 @@ export default function GameScreen() {
       window.clearInterval(id);
       window.removeEventListener('pagehide', save);
     };
-  }, [loaded]);
+  }, [loaded, started]);
 
   // Stage changes: danger-line colour in the scene + the stage's own tune.
   useEffect(() => {
@@ -219,7 +229,7 @@ export default function GameScreen() {
 
   // Auto-pause when the tab is hidden; Escape toggles pause; typing anywhere focuses the input.
   useEffect(() => {
-    if (!loaded) return;
+    if (!loaded || !started) return;
     const onVis = () => document.hidden && setPause(true);
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -239,11 +249,13 @@ export default function GameScreen() {
       document.removeEventListener('visibilitychange', onVis);
       window.removeEventListener('keydown', onKey);
     };
-  }, [loaded, paused, setPause]);
+  }, [loaded, started, paused, setPause]);
 
   useEffect(() => {
-    if (loaded) inputRef.current?.focus();
-  }, [loaded]);
+    if (loaded && started) inputRef.current?.focus();
+  }, [loaded, started]);
+
+  const startGame = useCallback(() => setStarted(true), []);
 
   const quit = () => {
     if (!loaded) return;
@@ -265,6 +277,15 @@ export default function GameScreen() {
   }
   if (!config || !loaded || !hud) {
     return <div className="flex h-full items-center justify-center font-semibold text-ink-soft">Preparing words…</div>;
+  }
+
+  if (!started) {
+    return (
+      <div className="app-root flex overflow-hidden">
+        <StageBackdrop stage={stage} />
+        <WordPreview words={loaded.bridge.session.plannedWords} onDone={startGame} />
+      </div>
+    );
   }
 
   const placeholder = config.mode === 'copy' ? 'Type the hidden word…' : 'Type the English word…';

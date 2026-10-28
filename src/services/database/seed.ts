@@ -1,5 +1,5 @@
 import { OLD_STARTER_NAME, OLD_STARTER_WORDS } from '@/features/vocabulary/sampleData';
-import { BASIC_PACK, OLD_PACK_IDS, packWordId, type WordPack } from '@/features/vocabulary/packs';
+import { BASIC_ADDED_SOUNDS, BASIC_PACK, OLD_PACK_IDS, packWordId, type WordPack } from '@/features/vocabulary/packs';
 import { getDb } from './db';
 import { cleanDraft, deleteCollection } from './repositories';
 
@@ -14,6 +14,8 @@ export async function seedIfFirstRun(): Promise<void> {
   if (await db.settings.get(SEEDED_KEY)) return;
   if ((await db.collections.count()) === 0) await addPack(BASIC_PACK);
   await db.settings.put({ key: SEEDED_KEY, value: true });
+  // A fresh library already has every sound.
+  for (const { key } of BASIC_ADDED_SOUNDS) await db.settings.put({ key, value: true });
 }
 
 /** The Basic set (for "add starter words" and a fresh guest after signing out); returns its id. */
@@ -57,4 +59,37 @@ export async function replaceOldStarterSets(): Promise<boolean> {
   for (const id of old) await deleteCollection(id);
   await addPack(BASIC_PACK);
   return true;
+}
+
+/**
+ * Gives a player who already has Basic the words of sounds added to it later, once per
+ * addition (so a word they delete afterwards stays deleted). A word Basic already had gets
+ * the new sound tag. Players who deleted Basic get nothing. Returns how many words were added.
+ */
+export async function addNewBasicWords(): Promise<number> {
+  const db = getDb();
+  let added = 0;
+  for (const { key, sounds } of BASIC_ADDED_SOUNDS) {
+    if (await db.settings.get(key)) continue;
+    const now = Date.now();
+    await db.transaction('rw', db.collections, db.vocabulary, db.settings, async () => {
+      if (await db.collections.get(BASIC_PACK.id)) {
+        const tags = new Set(sounds.map((s) => `sound ${s}`));
+        const drafts = BASIC_PACK.words.filter((d) => d.tags?.some((t) => tags.has(t)));
+        for (const [i, d] of drafts.entries()) {
+          const id = packWordId(BASIC_PACK, d.english);
+          const seen = await db.vocabulary.get(id);
+          if (!seen) {
+            await db.vocabulary.put({ ...cleanDraft(d), id, collectionId: BASIC_PACK.id, createdAt: now + i, updatedAt: now + i });
+            added++;
+          } else if (d.tags?.some((t) => !(seen.tags ?? []).includes(t))) {
+            await db.vocabulary.update(id, { tags: [...new Set([...(seen.tags ?? []), ...(d.tags ?? [])])], updatedAt: now + i });
+          }
+        }
+        await db.collections.update(BASIC_PACK.id, { description: BASIC_PACK.description, updatedAt: now });
+      }
+      await db.settings.put({ key, value: true });
+    });
+  }
+  return added;
 }

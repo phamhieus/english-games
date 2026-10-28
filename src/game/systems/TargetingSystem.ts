@@ -1,4 +1,4 @@
-import { normalizeAnswer, similarity } from '@/utils/text';
+import { normalizeAnswer, similarity, typingKey } from '@/utils/text';
 
 /** Minimal view of a balloon that targeting needs — independent of Phaser. */
 export interface TargetCandidate {
@@ -15,11 +15,11 @@ export interface TargetCandidate {
  * the danger zone (largest progress) wins.
  */
 export function findExactTarget<T extends TargetCandidate>(typed: string, balloons: readonly T[]): T | null {
-  const answer = normalizeAnswer(typed);
+  const answer = typingKey(typed);
   if (!answer) return null;
   let best: T | null = null;
   for (const b of balloons) {
-    if (b.claimed || normalizeAnswer(b.answer) !== answer) continue;
+    if (b.claimed || typingKey(b.answer) !== answer) continue;
     if (!best || b.progress > best.progress) best = b;
   }
   return best;
@@ -27,22 +27,31 @@ export function findExactTarget<T extends TargetCandidate>(typed: string, balloo
 
 /** Copy-mode live targeting: lowest balloon whose answer starts with what's typed so far. */
 export function findPrefixTarget<T extends TargetCandidate>(typed: string, balloons: readonly T[]): T | null {
-  const prefix = normalizeAnswer(typed);
+  const prefix = typingKey(typed);
   if (!prefix) return null;
   let best: T | null = null;
   for (const b of balloons) {
-    if (b.claimed || !normalizeAnswer(b.answer).startsWith(prefix)) continue;
+    if (b.claimed || !typingKey(b.answer).startsWith(prefix)) continue;
     if (!best || b.progress > best.progress) best = b;
   }
   return best;
 }
 
-/** Number of leading characters of `answer` matched by `typed` (normalized, case-insensitive). */
+/**
+ * Number of leading characters of `answer` matched by `typed` (normalized, case-insensitive).
+ * Apostrophes needn't be typed: those inside the matched part count as matched.
+ */
 export function matchedPrefixLength(typed: string, answer: string): number {
-  const t = normalizeAnswer(typed);
+  const t = typingKey(typed);
   const a = normalizeAnswer(answer);
-  if (!t || !a.startsWith(t)) return 0;
-  return t.length;
+  if (!t) return 0;
+  let i = 0;
+  for (const ch of t) {
+    while (a[i] === "'") i++;
+    if (a[i] !== ch) return 0;
+    i++;
+  }
+  return i;
 }
 
 /**

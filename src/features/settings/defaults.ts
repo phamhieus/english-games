@@ -11,7 +11,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   musicVolume: 0.5,
   sfxVolume: 0.6,
   speechEnabled: true,
-  speechRate: 0.9,
+  speechRate: 0.8,
+  speechRateV2: true,
   announceBeforeSpawn: true,
   recallAnnounce: 'vietnamese',
   speakOnCorrect: false,
@@ -32,5 +33,10 @@ export function mergeSettings(stored: Partial<AppSettings> | undefined): AppSett
   const merged = { ...DEFAULT_SETTINGS, reducedMotion: prefersReducedMotion(), ...(stored ?? {}) };
   // Saves from before the skin shop: keep the skin the player already had equipped.
   if (!stored?.ownedSkins) merged.ownedSkins = stored?.cannonSkin ? [stored.cannonSkin] : [];
+  // The default speed went from 0.9× to 0.8× (slower is clearer); a save still on the old default moves with it.
+  if (stored && !stored.speechRateV2) {
+    if (stored.speechRate === 0.9) merged.speechRate = 0.8;
+    merged.speechRateV2 = true;
+  }
   return merged;
 }

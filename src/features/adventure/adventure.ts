@@ -1,4 +1,4 @@
-import type { AdventureInfo, BossId, Difficulty, GameMode, PracticeSize, SessionConfig, SessionMistake, SessionRecord, StageId } from '@/types';
+import type { AdventureInfo, BossId, CefrLevel, Difficulty, GameMode, PracticeSize, SessionConfig, SessionMistake, SessionRecord, StageId } from '@/types';
 import { adventureBoss, bossById } from '@/game/config/bosses';
 
 /**
@@ -27,6 +27,7 @@ export function startAdventure(opts: {
   size: PracticeSize;
   stage: StageId;
   id: string;
+  levels?: CefrLevel[];
 }): SessionConfig {
   const adventure: AdventureInfo = { id: opts.id, step: 0, boss: adventureBoss(opts.level, opts.defeated).id };
   return {
@@ -39,6 +40,7 @@ export function startAdventure(opts: {
     practiceSize: opts.size,
     stage: opts.stage,
     stageMode: 'random',
+    levels: opts.levels,
     adventure,
   };
 }

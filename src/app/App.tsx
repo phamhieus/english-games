@@ -2,10 +2,11 @@ import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { BarChart3, BookOpen, Gamepad2, Settings as SettingsIcon, Shirt, TriangleAlert } from 'lucide-react';
 import { isPersistent, openDatabase } from '@/services/database/db';
 import { markInterruptedSessions } from '@/services/database/repositories';
-import { replaceOldStarterSets, seedIfFirstRun } from '@/services/database/seed';
+import { addNewBasicWords, replaceOldStarterSets, seedIfFirstRun } from '@/services/database/seed';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useAppStore, type Screen } from '@/stores/appStore';
 import { useViewportHeight } from '@/hooks/useViewportHeight';
+import { useUpdateReload } from '@/hooks/useUpdateReload';
 import { music } from '@/services/audio/music';
 import { speech } from '@/services/speech/speech';
 import { HomeScreen } from '@/components/game/HomeScreen';
@@ -67,6 +68,8 @@ export function App() {
   const navigate = useAppStore((s) => s.navigate);
   const sessionKey = useAppStore((s) => s.sessionKey);
   const [askSignIn, setAskSignIn] = useState(false);
+  // A newer build was deployed: reload, but never in the middle of a game.
+  useUpdateReload(screen !== 'game');
   const playAsGuest = useCallback(() => {
     try {
       sessionStorage.setItem(GUEST_KEY, '1');
@@ -83,6 +86,7 @@ export function App() {
       await markInterruptedSessions().catch(() => 0);
       await seedIfFirstRun().catch((e: unknown) => console.warn('[seed]', e));
       await replaceOldStarterSets().catch((e: unknown) => console.warn('[basic]', e));
+      await addNewBasicWords().catch((e: unknown) => console.warn('[basic]', e));
       await Promise.all([useSettingsStore.getState().load(), useAppStore.getState().loadSetup()]);
       if (!cancelled) setReady(true);
     })().catch((e: unknown) => {
@@ -147,14 +151,15 @@ export function App() {
     if (ready && screen !== 'game') music.play('menu');
   }, [ready, screen]);
 
-  // Browsers only start audio/speech after a user gesture. On touch screens a
-  // pointerdown doesn't count as one — only the release (pointerup/touchend) does.
+  // Browsers only start audio (and iOS only speaks) after a user gesture.
   useEffect(() => {
-    const unlock = () => {
+    const unlock = (e: Event) => {
       music.unlock();
-      speech.unlock();
+      // iOS doesn't count pointerdown as a gesture for audio/speech; a speak() queued there would
+      // sit pending and block the retry on touchend.
+      if (e.type !== 'pointerdown') speech.unlock();
     };
-    const events = ['pointerdown', 'pointerup', 'touchend', 'keydown'] as const;
+    const events = ['pointerdown', 'touchend', 'click', 'keydown'] as const;
     for (const e of events) window.addEventListener(e, unlock);
     return () => {
       for (const e of events) window.removeEventListener(e, unlock);
