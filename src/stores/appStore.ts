@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Difficulty, GameMode, PracticeSize, SessionConfig, SessionRecord, SessionStyle, StageMode } from '@/types';
+import type { CefrLevel, Difficulty, GameMode, PracticeSize, SessionConfig, SessionRecord, SessionStyle, StageMode } from '@/types';
 import { getDb } from '@/services/database/db';
 import { nextAdventureStep } from '@/features/adventure/adventure';
 
@@ -10,6 +10,8 @@ export interface GameSetup {
   play: 'adventure' | 'custom';
   /** Word sets practised together. */
   collectionIds: string[];
+  /** CEFR levels to practise; empty = all words. */
+  levels: CefrLevel[];
   mode: GameMode;
   difficulty: Difficulty;
   style: SessionStyle;
@@ -25,6 +27,7 @@ const SETUP_KEY = 'last-setup';
 export const DEFAULT_SETUP: GameSetup = {
   play: 'adventure',
   collectionIds: [],
+  levels: [],
   mode: 'recall',
   difficulty: 'easy',
   style: 'practice',

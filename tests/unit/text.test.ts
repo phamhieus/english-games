@@ -24,6 +24,11 @@ describe('answersMatch', () => {
     expect(answersMatch('WELL-KNOWN', 'well-known')).toBe(true);
     expect(answersMatch("it's up to you", 'it’s up to you')).toBe(true);
   });
+  it("doesn't require apostrophes", () => {
+    expect(answersMatch('oclock', "o'clock")).toBe(true);
+    expect(answersMatch('its up to you', 'it’s up to you')).toBe(true);
+    expect(answersMatch("'", "o'clock")).toBe(false);
+  });
   it('rejects empty input and wrong words', () => {
     expect(answersMatch('   ', '')).toBe(false);
     expect(answersMatch('enviroment', 'environment')).toBe(false);

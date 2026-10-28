@@ -92,8 +92,15 @@ class MusicService {
 
   /** Call from a user gesture: browsers only allow audio after one. */
   unlock(): void {
-    if (this.ctx?.state === 'suspended' && !this.paused) void this.ctx.resume();
+    // Created even with music off: spoken words play through it too (see speech).
+    const ctx = this.context();
+    if (ctx?.state === 'suspended' && !this.paused) void ctx.resume();
     if (this.timer === undefined) this.start();
+  }
+
+  /** The AudioContext, shared with spoken words so one unlock in a tap covers both. */
+  audioContext(): AudioContext | null {
+    return typeof window === 'undefined' ? null : this.context();
   }
 
   pause(): void {
@@ -103,7 +110,8 @@ class MusicService {
 
   resume(): void {
     this.paused = false;
-    if (this.enabled) void this.ctx?.resume();
+    // Resumed even with music off (no notes are scheduled then): spoken words need it running.
+    void this.ctx?.resume();
   }
 
   setEnabled(enabled: boolean): void {

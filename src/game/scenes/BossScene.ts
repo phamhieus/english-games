@@ -12,7 +12,7 @@ import { BossBullet, BossWordPlate } from '@/game/entities/BossTargets';
 import type { Balloon } from '@/game/entities/Balloon';
 import { Cannon } from '@/game/entities/Cannon';
 import { Projectile } from '@/game/entities/Projectile';
-import { normalizeAnswer } from '@/utils/text';
+import { typingKey } from '@/utils/text';
 import { mathRng } from '@/utils/random';
 import { speech } from '@/services/speech/speech';
 import { sfx } from '@/services/audio/sfx';
@@ -276,10 +276,10 @@ export class BossScene extends Phaser.Scene implements SceneHandle {
 
   submit(text: string): SubmitResult {
     if (!this.session.isRunning || this.ending || this.paused) return { kind: 'ignored' };
-    const typed = normalizeAnswer(text);
+    const typed = typingKey(text);
     if (!typed) return { kind: 'empty' };
 
-    const hits = this.targets().filter((t) => normalizeAnswer(t.answer) === typed);
+    const hits = this.targets().filter((t) => typingKey(t.answer) === typed);
     if (hits.length === 0) {
       const attributed = attributeWrongAnswer(text, this.targets());
       const res = this.session.answerIncorrect(text, attributed?.wordId ?? null);
@@ -334,11 +334,11 @@ export class BossScene extends Phaser.Scene implements SceneHandle {
   }
 
   submitIfComplete(text: string): SubmitResult {
-    const typed = normalizeAnswer(text);
+    const typed = typingKey(text);
     const targets = this.targets();
-    if (!typed || !targets.some((t) => normalizeAnswer(t.answer) === typed)) return { kind: 'ignored' };
+    if (!typed || !targets.some((t) => typingKey(t.answer) === typed)) return { kind: 'ignored' };
     const longer = targets.some((t) => {
-      const a = normalizeAnswer(t.answer);
+      const a = typingKey(t.answer);
       return a.length > typed.length && a.startsWith(typed);
     });
     return longer ? { kind: 'ignored' } : this.submit(text);

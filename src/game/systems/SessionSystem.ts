@@ -139,6 +139,11 @@ export class GameSession {
     return [...this.targets.keys()];
   }
 
+  /** The words this session plays: a practice session's targets, or the whole pool when endless. */
+  get plannedWords(): VocabularyItem[] {
+    return this.config.style === 'practice' ? [...this.targets.values()].map((t) => t.word) : [...this.words];
+  }
+
   get isRunning(): boolean {
     return this.state === 'running';
   }

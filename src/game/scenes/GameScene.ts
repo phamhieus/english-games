@@ -16,7 +16,7 @@ import {
   matchedPrefixLength,
 } from '@/game/systems/TargetingSystem';
 import { findSpawnX } from '@/game/systems/SpawnSystem';
-import { normalizeAnswer } from '@/utils/text';
+import { typingKey } from '@/utils/text';
 import { mathRng } from '@/utils/random';
 import { speech, type SpeechLang } from '@/services/speech/speech';
 import { sfx } from '@/services/audio/sfx';
@@ -247,7 +247,7 @@ export class GameScene extends Phaser.Scene implements SceneHandle {
 
   submit(text: string): SubmitResult {
     if (!this.session.isRunning || this.ending || this.paused) return { kind: 'ignored' };
-    if (!normalizeAnswer(text)) return { kind: 'empty' };
+    if (!typingKey(text)) return { kind: 'empty' };
 
     const target = findExactTarget(text, this.balloons);
     if (target) {
@@ -284,10 +284,10 @@ export class GameScene extends Phaser.Scene implements SceneHandle {
    * so the player can keep typing; Enter still submits in that case.
    */
   submitIfComplete(text: string): SubmitResult {
-    const typed = normalizeAnswer(text);
+    const typed = typingKey(text);
     if (!typed || !findExactTarget(text, this.balloons)) return { kind: 'ignored' };
     const longer = this.balloons.some((b) => {
-      const a = normalizeAnswer(b.answer);
+      const a = typingKey(b.answer);
       return !b.claimed && a.length > typed.length && a.startsWith(typed);
     });
     return longer ? { kind: 'ignored' } : this.submit(text);

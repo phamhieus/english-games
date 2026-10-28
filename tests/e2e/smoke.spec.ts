@@ -20,6 +20,8 @@ test('create vocabulary, play a session, answer correctly and keep the results',
   await page.getByRole('radio', { name: /Vietnamese → English/ }).click();
   await page.getByRole('radio', { name: 'All', exact: true }).click();
   await page.getByRole('button', { name: 'Start game' }).click();
+  // The words of the game pop up first, then close by themselves.
+  await expect(page.getByTestId('word-preview')).toContainText('apple');
 
   // 3. Wait for the balloon (prompt shows the Vietnamese meaning), then answer.
   await expect(page.getByTestId('active-balloons')).toContainText('quả táo', { timeout: 15_000 });

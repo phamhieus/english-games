@@ -43,6 +43,7 @@ export function BossSelectScreen() {
       stage: boss.stage,
       stageMode: 'random',
       boss: boss.id,
+      levels: setup.levels,
     });
   };
 

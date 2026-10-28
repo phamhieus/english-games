@@ -4,6 +4,8 @@ test-results
 playwright-report
 *.tsbuildinfo
 .vitest
+dist-fb
+word-shooter-fb.zip
 .wrangler
 .dev.vars
 .deploy.env
