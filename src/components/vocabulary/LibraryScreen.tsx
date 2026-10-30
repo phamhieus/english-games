@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { CEFR_LEVELS, type VocabularyItem, type WordProgress } from '@/types';
 import { useCollections, useCollectionWords } from '@/hooks/useLibrary';
-import { createCollection, deleteCollection, deleteWords, renameCollection } from '@/services/database/repositories';
+import { createCollection, deleteCollection, deleteWords, renameCollection, setWordsExcluded } from '@/services/database/repositories';
 import { addSampleCollection } from '@/services/database/seed';
 import { exportCsv } from '@/services/import/spreadsheet';
 import { isDue, isMastered } from '@/features/learning/spacedRepetition';
@@ -21,7 +21,7 @@ import { mistakeWeight } from '@/features/learning/selection';
 import { speech } from '@/services/speech/speech';
 import { useAppStore } from '@/stores/appStore';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { Button, Card, ConfirmDialog, EmptyState, Modal, inputCls } from '@/components/common/ui';
+import { Button, Card, ConfirmDialog, EmptyState, Modal, Switch, inputCls } from '@/components/common/ui';
 import { FlatBalloon, SET_COLORS } from '@/components/common/Art';
 
 import { WordFormModal } from './WordFormModal';
@@ -105,6 +105,9 @@ export function LibraryScreen() {
   };
 
   const now = Date.now();
+  const practised = data ? data.words.filter((w) => !w.excluded).length : 0;
+  const shownOn = filtered.filter((w) => !w.excluded).length;
+  const allShownOn = filtered.length > 0 && shownOn === filtered.length;
 
   return (
     <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
@@ -163,7 +166,9 @@ export function LibraryScreen() {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h1 className="min-w-0 truncate text-3xl font-bold">
                 {selected.name}
-                <span className="ml-2 align-middle text-base font-semibold text-ink-soft">{selected.wordCount} words</span>
+                <span className="ml-2 align-middle text-base font-semibold text-ink-soft">
+                  {selected.wordCount} words{data && practised < data.words.length ? ` · ${practised} practised` : ''}
+                </span>
               </h1>
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -234,14 +239,32 @@ export function LibraryScreen() {
               </EmptyState>
             ) : (
               <>
-                <p className="text-sm text-ink-soft">
-                  Showing {Math.min(limit, filtered.length)} of {filtered.length} word(s)
-                </p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm text-ink-soft">
+                    Showing {Math.min(limit, filtered.length)} of {filtered.length} word(s)
+                  </p>
+                  {/* switch every shown word on or off for practice (follows the search and filters) */}
+                  <div className="flex items-center gap-2 text-sm font-semibold">
+                    <span className="rounded-full border-2 border-line bg-surface px-2 py-0.5 text-xs font-bold tabular-nums">
+                      {shownOn}/{filtered.length} on
+                    </span>
+                    <span>Select all</span>
+                    <Switch
+                      checked={allShownOn}
+                      onChange={(on) => void setWordsExcluded(filtered.map((w) => w.id), !on)}
+                      label="Practise all shown words"
+                    />
+                  </div>
+                </div>
                 <ul className="flex flex-col gap-2" data-testid="word-list">
                   {filtered.slice(0, limit).map((w) => {
                     const st = statusOf(data?.progress.get(w.id), now);
                     return (
-                      <li key={w.id} className="tile flex items-center gap-3 rounded-xl bg-surface px-3 py-2 transition hover:border-line/40">
+                      <li
+                        key={w.id}
+                        className={`tile flex items-center gap-3 rounded-xl bg-surface px-3 py-2 transition hover:border-line/40 ${w.excluded ? 'opacity-55' : ''}`}
+                      >
+                        <Switch checked={!w.excluded} onChange={(on) => void setWordsExcluded([w.id], !on)} label={`Practise ${w.english}`} />
                         <button
                           type="button"
                           aria-label={`Pronounce ${w.english}`}

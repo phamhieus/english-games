@@ -38,9 +38,11 @@ interface Loaded {
 async function prepare(config: SessionConfig): Promise<Loaded> {
   const ids = config.collectionIds?.length ? config.collectionIds : [config.collectionId];
   const all = filterByLevels((await Promise.all(ids.map((id) => listWords(id)))).flat(), config.levels);
-  // The same English word in two sets would spawn twice; keep the first.
+  // The same English word in two sets would spawn twice; keep the first one that is switched on
+  // (keeping a switched-off copy would drop the word from the game altogether).
   const seen = new Set<string>();
   const words = all.filter((w) => {
+    if (w.excluded) return false;
     const key = normalizeAnswer(w.english);
     if (seen.has(key)) return false;
     seen.add(key);
@@ -109,7 +111,7 @@ export default function GameScreen() {
               ? 'There are no mistakes to review in this collection.'
               : config.levels?.length
                 ? `This collection has no ${config.levels.join('/')} words.`
-                : 'This collection has no words.',
+                : 'No words to practise here. Add some, or switch some on in the Library.',
           );
           return;
         }

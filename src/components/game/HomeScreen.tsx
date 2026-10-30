@@ -129,7 +129,7 @@ export function HomeScreen() {
   const stats = useMemo(() => {
     if (!data) return null;
     const now = Date.now();
-    const words = filterByLevels(data.words, setup.levels);
+    const words = filterByLevels(data.words.filter((w) => !w.excluded), setup.levels);
     return {
       total: words.length,
       fresh: words.filter((w) => !data.progress.get(w.id)?.attempts).length,
@@ -191,6 +191,8 @@ export function HomeScreen() {
   const notice = poolEmpty ? (
     !adventure && setup.mode === 'mistakes' ? (
       'No mistakes to review yet. Play another mode first!'
+    ) : data && filterByLevels(data.words, setup.levels).length ? (
+      'Every word here is switched off. Turn some on in the Library.'
     ) : setup.levels.length ? (
       `No ${setup.levels.join('/')} words in these sets. Pick another level.`
     ) : (
